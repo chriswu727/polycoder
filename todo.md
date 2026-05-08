@@ -582,6 +582,12 @@ not validation work).
 - [ ] **V0.2.6** IST runner: Lovable baseline. Manual operation
       with pre-committed prompts; transcripts + zip exports
       saved per iter.
+      - Operator runbook drafted at
+        `benchmarks/ist/runners/lovable-runbook.md` 2026-05-08.
+        Covers tier choice (free 3-day vs Pro one-sitting),
+        per-prompt procedure, snapshot layout, lovable-meta.json
+        ledger, common pitfalls, time/cost. Actual 15-prompt
+        run blocked on operator (you).
 - [x] **V0.2.7** Metrics automation under
       `benchmarks/ist/metrics/`:
       - BPR (build pass rate): static-vs-build-vs-no-output
