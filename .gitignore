@@ -1,0 +1,45 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node / Electron
+node_modules/
+dist/
+build/
+out/
+release/
+.next/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Secrets / local config
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+secrets.json
+
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Coverage / cache
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
