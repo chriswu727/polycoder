@@ -439,5 +439,52 @@ and role definitions to remain stable while implementation iterates.
 this document first, then write code.** Drift between the spec and the code
 is the primary risk for a project of this size.
 
-For ongoing design decisions and rationale, see
-[`docs/decisions.md`](./docs/decisions.md).
+## 13. Companion Documents
+
+- [`docs/decisions.md`](./docs/decisions.md) — Architecture Decision
+  Log. ADR-001 through ADR-006 cover the original design; ADR-007
+  through ADR-012 cover decisions informed by reading Claude Code's
+  source.
+
+- [`docs/claude-code-learnings.md`](./docs/claude-code-learnings.md) —
+  Distilled observations from reading Claude Code's source tree, with
+  notes on what we adopt, adapt, or reject for polycoder.
+
+- [`docs/prompts/`](./docs/prompts/) — V0.1 first-draft system prompts
+  for all 8 roles, plus a shared preamble. See `docs/prompts/README.md`
+  for the file index and assembly-time composition.
+
+## 14. Cross-cutting design principles (informed by Claude Code learnings)
+
+The following principles are universal across roles and are reinforced
+in each role's prompt template:
+
+1. **Roles are role-bound, not freeform.** Each role has a strict
+   tool allowlist and a strict input/output schema. (ADR-007, ADR-008)
+
+2. **System prompts have a static cacheable prefix and a dynamic
+   suffix**, separated by a literal `___POLYCODER_PROMPT_BOUNDARY___`
+   marker. Per-iteration data goes in user messages, not system
+   prompts. (ADR-009)
+
+3. **Inter-role communication uses XML envelopes with JSON payloads**,
+   modeled on Claude Code's `<task-notification>` pattern. (ADR-010)
+
+4. **Verification independence is enforced**: Coder and Adversary must
+   use different models. The orchestrator warns and labels iterations
+   if violated. (ADR-011)
+
+5. **Synthesis discipline**: roles must restate facts in their output,
+   not delegate understanding ("based on the prior role's…" is
+   forbidden). The Architect role enforces this most strictly. (ADR-012)
+
+6. **Faithful reporting and anti-sycophancy are universal directives**
+   that appear in every role's static preamble.
+
+7. **Quantitative output budgets** per role (token/word counts), not
+   qualitative ("be concise"). Each role's prompt header specifies its
+   budget.
+
+8. **Disagreement is first-class, not buried**. The Communicator's
+   single most important responsibility is surfacing role-vs-role
+   disagreements as user-facing decisions.

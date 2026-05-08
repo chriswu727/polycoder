@@ -209,3 +209,351 @@ Use `polycoder` as a working/placeholder name. Mark as subject to rename.
 
 - All references in docs flagged as placeholder
 - Final naming decision deferred until V0.2 (post-validation)
+
+---
+
+## ADR-007: Coordinator/Worker pattern, role-bound workers
+
+- **Date**: 2026-05-08
+- **Status**: Accepted
+- **Informed by**: Claude Code's `coordinator/coordinatorMode.ts` (see
+  [`claude-code-learnings.md` §1](./claude-code-learnings.md#1))
+
+### Context
+
+How is the multi-role pipeline orchestrated internally? Two extremes:
+
+- **Free-form multi-agent debate**: any role can invoke any other; loops
+  terminate when consensus or budget reached. Flexible but unbounded
+  cost; hard to reason about.
+- **Fixed pipeline with no orchestrator intelligence**: dumb runner steps
+  through roles in order. Predictable but can't recover from upstream
+  errors or surface conflicts.
+
+Claude Code's coordinator/worker pattern is a middle ground: a
+coordinator that decides what to dispatch, with workers that execute
+bounded tasks.
+
+### Decision
+
+polycoder's pipeline orchestrator is a **coordinator** that:
+
+- Dispatches role invocations in a fixed order (V0)
+- Reads each role's structured output and decides whether to proceed,
+  retry with corrected input, or surface a conflict to the user
+- Never executes role work itself — delegates everything
+
+Each role is a **role-bound worker**:
+
+- Has a fixed allowlist of tools (no role can access tools outside its
+  scope; e.g. Adversary cannot edit code)
+- Has a fixed input schema (Zod-validated)
+- Has a fixed output schema (Zod-validated)
+- Cannot invoke other roles (only the orchestrator can)
+
+### Rationale
+
+- Constrains the cost surface: with N roles each fixed in scope, the
+  upper bound on a single iteration's cost is predictable and capped.
+- Makes the system testable: each role has a defined contract.
+- Mirrors the production-grade pattern Claude Code itself uses, which
+  is a strong signal of viability.
+- Allows conflict surfacing (selective transparency) — the orchestrator
+  is the only entity with a view of all role outputs.
+
+### Consequences
+
+- Orchestrator code becomes substantial — it owns the conflict-detection
+  and pipeline-flow logic.
+- New roles cannot be added by users in V0 (extending the role set
+  requires code changes). V1+ may add user-defined roles via a manifest
+  file similar to Claude Code's `loadAgentsDir`.
+
+---
+
+## ADR-008: Tool framework with metadata flags
+
+- **Date**: 2026-05-08
+- **Status**: Accepted
+- **Informed by**: Claude Code's `Tool.ts` and per-tool prompt files (see
+  [`claude-code-learnings.md` §2, §7](./claude-code-learnings.md#2))
+
+### Context
+
+Roles need to call tools (read files, edit files, run bash, query memory,
+etc.). How are tools defined, registered, and assigned to roles?
+
+### Decision
+
+A tool framework matching Claude Code's shape, simplified to V0 scope:
+
+```typescript
+type ToolDef<I, O> = {
+  name: string
+  description: string                     // shown to the model
+  inputSchema: ZodSchema<I>
+  outputSchema: ZodSchema<O>
+  call: (input: I, ctx: ToolContext) => Promise<O>
+  isReadOnly: (input: I) => boolean       // drives default permission
+  isConcurrencySafe: (input: I) => boolean
+  // V0 stops here. V1+: isDestructive, shouldDefer, searchHint, ...
+}
+
+function buildTool<I, O>(def: ToolDef<I, O>): Tool<I, O>
+```
+
+Per-role allowlists in role definitions:
+
+```typescript
+type RoleDefinition = {
+  role: RoleType
+  allowedTools: ToolName[]          // strict allowlist
+  systemPromptStatic: string         // cacheable prefix
+  inputSchema: ZodSchema
+  outputSchema: ZodSchema
+  defaultModelHints: ModelHint[]
+}
+```
+
+V0 tools (10 total): `read_file`, `write_file`, `edit_file`, `bash`,
+`read_project_memory`, `update_project_memory`, `read_history`,
+`ask_user_question`, `read_design_tokens`, `run_test_suite`.
+
+### Rationale
+
+- The metadata-flag pattern is a proven primitive (Claude Code uses it).
+- Allowlists per role make role isolation **structurally enforced**, not
+  prompt-conventional. Adversary literally cannot edit code; the tool
+  isn't visible to it.
+- Tool framework is independent of model framework — adding a new
+  provider doesn't touch tools.
+
+### Consequences
+
+- Each tool is ~50-150 LOC including schema and tests.
+- Total V0 tool implementation: ~1000 LOC.
+- Permissions logic is simple in V0 (no per-tool permission prompts,
+  since pipeline runs through to completion before user reviews) —
+  defer Claude Code's permission complexity to V1.
+
+---
+
+## ADR-009: System prompt cache boundary per role
+
+- **Date**: 2026-05-08
+- **Status**: Accepted
+- **Informed by**: Claude Code's `SYSTEM_PROMPT_DYNAMIC_BOUNDARY` (see
+  [`claude-code-learnings.md` §3](./claude-code-learnings.md#3))
+
+### Context
+
+When the same provider+model is assigned to multiple roles (common in
+Budget/China Pro presets where DeepSeek-V3 covers 5+ roles), prompt
+caching could substantially reduce cost — *if* the static prefix of each
+role's system prompt is byte-identical across calls.
+
+### Decision
+
+Each role's system prompt is composed in two parts:
+
+```
+[STATIC PREFIX]
+- Role identity
+- Output schema (JSON)
+- Operating principles
+- Anti-patterns
+- Examples
+
+___POLYCODER_PROMPT_BOUNDARY___
+
+[DYNAMIC SUFFIX]
+- Project memory snapshot (changes per iteration)
+- Prior role outputs (changes per iteration)
+- Current iteration metadata (timestamp, attempt #)
+```
+
+Per-iteration data goes in **user messages**, not the system prompt.
+This way, the system prompt is byte-stable across iterations within a
+session, maximizing cache hits.
+
+### Rationale
+
+- Claude Code reports ~10% cache_creation token reduction from this
+  pattern alone.
+- Our cost model (BYOK on cheap providers) tolerates cache misses, but
+  the engineering effort to enable caching is small (just keep dynamic
+  data out of the static section).
+
+### Consequences
+
+- Static prefix must not depend on workspace-specific config. If a user
+  customizes a role's prompt (override mechanism in V0.4), that user's
+  cache becomes per-workspace — acceptable.
+- Boundary marker is a literal string. Documented and tested.
+
+---
+
+## ADR-010: XML-tagged inter-role communication
+
+- **Date**: 2026-05-08
+- **Status**: Accepted
+- **Informed by**: Claude Code's `<task-notification>` envelope (see
+  [`claude-code-learnings.md` §1](./claude-code-learnings.md#1))
+
+### Context
+
+How does role N's output reach role N+1? Three options:
+
+- **Free-form text**: role N produces prose; role N+1 parses it. Brittle.
+- **Structured JSON only**: role N emits JSON; role N+1 reads JSON. Loses
+  the "this is from role X about iteration Y" framing in the prompt.
+- **XML envelope wrapping JSON payload**: role N emits a tagged envelope
+  with metadata; role N+1 sees both metadata and content. This is what
+  Claude Code does for `<task-notification>`.
+
+### Decision
+
+Inter-role messages use an XML envelope:
+
+```xml
+<role-output role="adversary" iteration="3" model="qwen-max">
+  <status>flagged</status>
+  <summary>Found 3 issues, 1 critical</summary>
+  <payload>
+    {
+      "issues": [...],
+      "confidence": 0.85
+    }
+  </payload>
+  <usage>
+    <input_tokens>1234</input_tokens>
+    <output_tokens>567</output_tokens>
+    <duration_ms>4321</duration_ms>
+  </usage>
+</role-output>
+```
+
+Schema-validated payload. The envelope itself is parseable by simple
+regex; the payload is JSON-validated against the role's output schema.
+
+### Rationale
+
+- Mirrors Claude Code's working pattern; reduces invention risk.
+- The envelope's metadata (role, model, iteration, status) is exactly
+  what the orchestrator needs for conflict detection and UI display.
+- LLMs reliably produce well-formed XML when prompted with explicit
+  closing-tag examples (Claude Code's evidence).
+
+### Consequences
+
+- Each role's output prompt teaches the envelope format with examples.
+- Orchestrator parses envelopes; payloads validated by Zod.
+- Deviations (unclosed tags, schema mismatches) trigger an automatic
+  retry with a corrective prompt up to N=2 attempts before failing.
+
+---
+
+## ADR-011: Verification independence — different model required
+
+- **Date**: 2026-05-08
+- **Status**: Accepted
+- **Informed by**: Claude Code's verification agent contract (see
+  [`claude-code-learnings.md` §6](./claude-code-learnings.md#6))
+
+### Context
+
+The product thesis depends on Adversary actually finding bugs the Coder
+missed. If the same underlying model serves both Coder and Adversary,
+they share blind spots and cognitive style — the Adversary becomes
+self-review, which Claude Code's documented contract explicitly forbids.
+
+### Decision
+
+Hard rules enforced by orchestrator + UI:
+
+1. **Coder's model and Adversary's model must differ** (provider OR
+   model — not just same provider with different model_ids).
+2. **Coder's model and Test Runner's model must differ** (a model
+   should not validate its own implementation).
+3. **Long-term Critic should use a model with strong reasoning** (default:
+   Claude Opus / Qwen-Max / GLM-4-Plus). Cheap-model assignment is
+   permitted but a soft warning shown.
+4. UI surface: **red warning banner** in Team Configuration if a user's
+   assignment violates rule 1 or 2. Pipeline still runs, but the
+   workspace's transparency display labels the iteration as
+   `verification_compromised`.
+
+### Rationale
+
+- The whole project's value proposition is multi-model adversarial review.
+  Allowing self-review silently breaks the core claim.
+- Claude Code's explicit rule ("only the verifier assigns a verdict; you
+  cannot self-assign PARTIAL") is the production-grade pattern.
+- Soft enforcement (warning + label) preserves user choice while making
+  the consequences visible.
+
+### Consequences
+
+- The four cheap-mode presets must be designed around this constraint
+  (e.g. Budget preset can't be 100% DeepSeek — needs at least 2 distinct
+  providers).
+- Users with only one provider's keys will see warnings on every
+  iteration. Documentation must explain why.
+
+---
+
+## ADR-012: Synthesis discipline — Architect cannot delegate understanding
+
+- **Date**: 2026-05-08
+- **Status**: Accepted
+- **Informed by**: Claude Code's coordinator synthesis principle (see
+  [`claude-code-learnings.md` §1](./claude-code-learnings.md#1))
+
+### Context
+
+Claude Code's coordinator prompt has an emphatic rule: *"Never delegate
+understanding. Don't write 'based on your findings, fix the bug.'
+Synthesize the findings yourself; produce a prompt with specific file
+paths and line numbers."*
+
+In polycoder, the analog is the **Architect role**, which receives:
+- Translator's spec
+- Adversary's flagged issues
+- Long-term Critic's tech-debt observations
+- Prior project memory
+
+…and must produce concrete pattern guidance that downstream Coder uses.
+
+### Decision
+
+The Architect role's system prompt explicitly forbids:
+
+- "Based on the previous role's findings…"
+- "Following the patterns identified earlier…"
+- "Per the architectural memory…" (without quoting/specifying *what*)
+
+Required pattern: the Architect must restate the relevant facts
+(file paths, line numbers, specific patterns) in its output, even if
+they appeared in a prior role's output. The Coder and downstream roles
+should not need to read prior role outputs to act on Architect's output —
+Architect's output should be self-contained.
+
+### Rationale
+
+- Without this discipline, the Architect becomes a passthrough that
+  doesn't add value (the Coder could just read the Adversary's report
+  directly).
+- Claude Code's explicit experience: lazy synthesis is the most common
+  multi-agent failure mode.
+- Forces the Architect to actually engage with cross-role reconciliation
+  rather than papering over disagreements.
+
+### Consequences
+
+- Architect's output is verbose by design — this is the role where
+  redundancy is good.
+- Token budget for Architect's output is set higher (1000 tokens vs.
+  Translator's 500) to accommodate restated facts.
+- Anti-pattern detection in the orchestrator: if Architect output
+  contains phrases matching `/based on (the |)(prior|previous|earlier)/i`,
+  flag it for re-prompt.
