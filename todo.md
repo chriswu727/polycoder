@@ -34,11 +34,11 @@
 
 🎉 **V0.1 SHIPPED 2026-05-07.**
 
-**Next concrete step**: V0.2.8 — aggregation + plotting
-(read all per-iter metric JSONs, emit `results/raw.json` and
-charts). Or V0.2.6 — Lovable baseline runs (manual). Or V0.2.9 —
-kick off the real polycoder-full + coder-only run (~$3, ~6 hrs
-elapsed; needs user sign-off since it spends real money).
+**Next concrete step**: V0.2.9 — actually run the 30 polycoder
+iterations (15 full + 15 coder-only). Spends ~$3 in real API
+calls; takes ~2 hrs of mostly-attended machine time. After that,
+V0.2.6 (manual Lovable runs) and V0.2.10/.11 (MAR + writeup) can
+land in any order.
 
 ---
 
@@ -613,9 +613,19 @@ not validation work).
       - @playwright/test added as devDep; first-time users run
         `pnpm exec playwright install chromium` (~92MB).
       Done 2026-05-07.
-- [ ] **V0.2.8** Aggregation + plotting: read all per-iter
-      metric JSONs, emit `benchmarks/ist/results/raw.json` and
-      charts under `benchmarks/ist/results/charts/`.
+- [x] **V0.2.8** Aggregation + plotting under
+      `benchmarks/ist/aggregate/`. Reads
+      `benchmarks/ist/metrics/<system>/<template>/iter*.json`,
+      emits `benchmarks/ist/results/{raw.json, summary.json,
+      summary.md, charts/{bpr,spr,ccd-mean-over-iters}.svg}`.
+      Hand-rolled SVG line + bar charts (no chart-lib dep).
+      Per-cell aggregates (BPR/SPR/TCMR rates, break_count,
+      longest_break_run, CCD drift). Per-system aggregates
+      weighted by iter count. Graceful handling of missing
+      cells (warnings, never throws). 12 unit tests covering
+      pass-rate math, break counting, longest-run, weighted
+      aggregation, SVG structure, HTML escaping. `pnpm
+      ist-aggregate` script registered. Done 2026-05-08.
 - [ ] **V0.2.9** Run all 45 iterations end-to-end. Hard stop if
       budget cap ($30) hit. Pre-flight verify: env keys, Lovable
       account, Playwright browser installed, http-server

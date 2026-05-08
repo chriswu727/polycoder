@@ -27,6 +27,7 @@
     "smoke": "tsx scripts/smoke.ts",
     "ist-run": "tsx scripts/ist-run.ts",
     "ist-metrics": "tsx scripts/ist-metrics.ts",
+    "ist-aggregate": "tsx scripts/ist-aggregate.ts",
     "dist:mac": "pnpm electron:build && electron-builder --mac --publish never",
     "dist:dir": "pnpm electron:build && electron-builder --mac --dir --publish never",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test"
