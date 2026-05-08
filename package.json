@@ -26,6 +26,7 @@
     "electron:build": "pnpm build:electron && pnpm build:renderer",
     "smoke": "tsx scripts/smoke.ts",
     "ist-run": "tsx scripts/ist-run.ts",
+    "ist-metrics": "tsx scripts/ist-metrics.ts",
     "dist:mac": "pnpm electron:build && electron-builder --mac --publish never",
     "dist:dir": "pnpm electron:build && electron-builder --mac --dir --publish never",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test"
@@ -93,6 +94,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "^4.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.2",

@@ -34,10 +34,11 @@
 
 🎉 **V0.1 SHIPPED 2026-05-07.**
 
-**Next concrete step**: V0.2.6 — Lovable baseline runs (manual,
-3 templates × 5 iters using pre-committed prompts). Or V0.2.7 —
-build the metrics automation (BPR/SPR/TCMR/CCD) so we can score
-runs as they come in.
+**Next concrete step**: V0.2.8 — aggregation + plotting
+(read all per-iter metric JSONs, emit `results/raw.json` and
+charts). Or V0.2.6 — Lovable baseline runs (manual). Or V0.2.9 —
+kick off the real polycoder-full + coder-only run (~$3, ~6 hrs
+elapsed; needs user sign-off since it spends real money).
 
 ---
 
@@ -581,14 +582,37 @@ not validation work).
 - [ ] **V0.2.6** IST runner: Lovable baseline. Manual operation
       with pre-committed prompts; transcripts + zip exports
       saved per iter.
-- [ ] **V0.2.7** Metrics automation:
-      - BPR (build pass rate): build script per template, exit
-        code → JSON.
-      - SPR (smoke pass rate): Playwright headless + golden
-        selector check.
-      - TCMR: detect test command, run, exit code.
-      - CCD: ESLint complexity (or escomplex fallback) → mean
-        complexity per iter.
+- [x] **V0.2.7** Metrics automation under
+      `benchmarks/ist/metrics/`:
+      - BPR (build pass rate): static-vs-build-vs-no-output
+        decision tree; spawn pnpm/npm install+build with timeout
+        + stdout/stderr tail capture.
+      - SPR (smoke pass rate): tiny in-process http-server +
+        Playwright headless Chromium; captures golden text
+        fragments + interactive count at iter N; iter N+1
+        compares against iter N's golden (80% count threshold,
+        case-insensitive text fragment match); console-error
+        and pageerror collection.
+      - TCMR (test coverage maintenance rate): detects scripts.test
+        in package.json, skips npm-init placeholder, runs and
+        captures exit code. polycoder-full-only by default.
+      - CCD (cyclomatic complexity drift): walks .ts/.tsx/.js/
+        .jsx/.mjs/.cjs files, runs ESLint with `complexity` rule
+        from snapshot cwd (works around flat-config base-path
+        ignore), parses messages for mean + max, computes
+        drift_from_iter1.
+      - `runMetrics.ts` orchestrates all 4 + threads BPR's
+        served_dir → SPR, iter 1's golden → iter 2's prior, iter
+        1's mean complexity → iter N's drift.
+      - `scripts/ist-metrics.ts` CLI walks runs/, persists to
+        `benchmarks/ist/metrics/<system>/<template>/iter<NN>.json`
+        with golden under `.../golden/iter<NN>.json`.
+      - 25 unit tests + 5 Playwright tests (gated behind
+        IST_FULL=1; verified working against real Chromium).
+      - `pnpm ist-metrics` script registered.
+      - @playwright/test added as devDep; first-time users run
+        `pnpm exec playwright install chromium` (~92MB).
+      Done 2026-05-07.
 - [ ] **V0.2.8** Aggregation + plotting: read all per-iter
       metric JSONs, emit `benchmarks/ist/results/raw.json` and
       charts under `benchmarks/ist/results/charts/`.
