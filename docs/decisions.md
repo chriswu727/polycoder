@@ -607,3 +607,64 @@ Not bun.
   (mitigated by `packageManager` field in `package.json` — Corepack
   can auto-install).
 - Decision can be revisited at V1.0 if bun's Electron story matures.
+
+---
+
+## ADR-014: Pin Vite to v7 (avoid rolldown native-binding issues)
+
+- **Date**: 2026-05-08
+- **Status**: Accepted (revisitable)
+
+### Context
+
+Initial scaffolding (A.2) installed `vite@^8.0.0`, which was the
+latest. Vite 8 ships with `rolldown@1.0.0-rc.18` as its default
+bundler — rolldown is Vite's Rust-rewrite of rollup, currently
+release-candidate.
+
+After pushing Layers A-C, GitHub Actions CI failed every run on the
+`pnpm build:renderer` step:
+
+```
+Cannot find module '@rolldown/binding-linux-x64-gnu'
+Cannot find module '../rolldown-binding.linux-x64-gnu.node'
+```
+
+The pnpm lockfile listed all per-platform rolldown bindings as
+optional deps, and `supported-architectures` in `.npmrc` was added
+to ensure the lockfile resolves them across darwin/linux/win32. But
+on Linux CI, even with the binding listed in the lockfile, pnpm's
+node-linker layout placed the .node file somewhere rolldown's
+runtime loader couldn't find it.
+
+This is a known interop issue between pnpm's symlinked node_modules
+and packages with per-platform optional native bindings, particularly
+when the package is in pre-release. Workarounds (shamefully-hoist,
+node-linker=hoisted, public-hoist-pattern) exist but each has costs.
+
+### Decision
+
+Pin Vite to `^7.0.0`. Don't upgrade to Vite 8 until rolldown ships
+stable + pnpm interop has well-documented patterns.
+
+### Rationale
+
+- Vite 7 uses esbuild + rollup (proven, stable, no native-binding
+  pnpm interop issues).
+- Bundle size is comparable: 193KB JS vs 191KB on Vite 8 — 1%
+  difference is not material for V0.
+- CI green is a hard requirement; chasing rolldown-pnpm interop in
+  V0 is unjustified risk.
+- Vite 7 supports React 19, Tailwind v4, and shadcn/ui — same
+  feature surface we need.
+
+### Consequences
+
+- We don't get rolldown's build-time speed advantage (~3-5× faster
+  on large codebases). For V0 codebase size (<500 modules), the
+  difference is sub-second and not noticed.
+- When Vite 8 + rolldown matures (~2026 H2 likely), revisit. ADR
+  amendment not required for the upgrade — just update package.json
+  and re-verify CI.
+- `supported-architectures` in `.npmrc` retained for future-proofing
+  (also helps better-sqlite3 lockfile portability).
