@@ -139,6 +139,70 @@ DOM? Which iter 4 fragments disappeared from iter 5's DOM?}}
 
 {{To be filled in once Lovable runs are complete.}}
 
+### 3.6 polycoder-full / todo / iter04 — reviewer cost explosion
+
+This isn't a code-quality failure (the iter completed, traffic
+light yellow, BPR + SPR pass), but a **production-economics
+failure** of the original tool-budget design that polycoder
+shipped with — and exactly the kind of finding the IST is meant
+to surface.
+
+**Numbers from `benchmarks/ist/runs/polycoder-full/todo/data/polycoder.db`**:
+
+| Role | Model | Input tokens | Output tokens | Cost |
+|------|-------|-------------:|--------------:|-----:|
+| translator | deepseek-chat | 16,385 | 1,166 | $0.00 |
+| designer | glm-4-flash | 8,542 | 914 | $0.00 |
+| architect | deepseek-chat | 52,245 | 3,437 | $0.01 |
+| coder | deepseek-coder | **1,538,143** | 10,651 | $0.13 |
+| **adversary** | **glm-4-plus** | **487,028** | 1,950 | **$3.42** |
+| long_term_critic | deepseek-chat | 315,820 | 7,283 | $0.04 |
+| test_runner | deepseek-chat | 1,446,288 | 20,460 | $0.13 |
+| communicator | glm-4-flash | 20,210 | 485 | $0.00 |
+| **iter total** | | | | **$3.75** |
+
+**What happened**: Coder + Test Runner + Adversary each used the
+full 40-tool-call budget. Each tool call replays the cumulative
+conversation history (including all prior tool results) into the
+next prompt. This is quadratic in tool calls — and with iter04's
+"add nested subtasks" prompt being the most complex of the 5,
+all three roles drove their counts toward the ceiling.
+
+The cost amplifier wasn't the per-token price (DeepSeek input
+is $0.27/M; GLM-4-plus is ~$7/M) or the tool count (40 each).
+**It was the combination**: GLM-4-plus × 40 tool calls × growing
+context = 487K input tokens at $7/M = $3.42 from one role on
+one iter.
+
+**Mitigation applied mid-V0.2.9**: per-role tool-call budgets
+([`core/roleHarness/invokeRole.ts`](../core/roleHarness/invokeRole.ts)
+`TOOL_CALLS_BY_ROLE`):
+
+```ts
+const TOOL_CALLS_BY_ROLE: Partial<Record<RoleType, number>> = {
+  adversary: 12,
+  long_term_critic: 12,
+}
+// coder + test_runner stay at 40
+```
+
+Reviewer roles don't write code; they only need to read enough
+files to form an opinion. 12 calls is comfortably above the
+empirical median (~3-5 reads per reviewer in the iter01-03 data
+of polycoder-full/todo) and well below the runaway threshold.
+
+**Why this matters for the polycoder thesis**: BYOK multi-model
+architectures don't just have to pick the "right model per
+role". They have to pick the "right tool budget per role" — a
+dimension single-model coding tools never face. This is one of
+the genuine engineering surfaces that emerges only when you
+build the multi-role pipeline. It's a finding that wouldn't have
+existed without the IST run.
+
+This doesn't appear in the polycoder-full/dashboard or /landing
+data because those iters were collected *after* the budget was
+tightened (see §6 threats-to-validity for the implication).
+
 ---
 
 ## 4. Cross-system comparison
@@ -230,6 +294,32 @@ paper would accept. Specifically:
   surrounding role models in polycoder-full are economy-tier
   models too. A China-Pro or Mixed preset (with stronger reviewer
   models) might widen the gap further. Future work.
+- **DeepSeek 504 outage mid-run**: during V0.2.9 attempt 1 the
+  DeepSeek API returned 504 Gateway Timeout for ~9 minutes
+  (verified by direct probe; not key-specific). All 10 of
+  polycoder-full's dashboard + landing iters in attempt 1 failed
+  at the translator role with `provider_error`. Re-run of those
+  cells happened after the outage cleared. Coder-only and the
+  todo template's polycoder-full run completed before the outage
+  began. The benchmark numbers reported here are from the
+  post-outage re-run; the original outage-affected data is
+  archived under `benchmarks/ist/runs/polycoder-full/` git
+  history (gitignored — see `archive/v0.2.9-attempt-1/`
+  if preserved). Threat: if the post-outage run hits a *different*
+  DeepSeek model snapshot than todo's run hit, intra-system
+  comparability is weaker than ideal.
+- **Tool-call budget retroactively tightened mid-V0.2.9** (ADR-017
+  if formalized): after observing polycoder-full/todo/iter04's
+  Adversary on GLM-4-plus burning 487K input tokens / $3.42
+  across 40 tool calls, the budget for adversary +
+  long_term_critic was lowered from 40 to 12 *before* dashboard +
+  landing ran. This is a confound: todo's polycoder-full data
+  was collected with budget=40; dashboard + landing's was
+  collected with budget=12. We don't expect the budget to alter
+  the BPR/SPR/CCD outcome — reviewers don't write code — but
+  cost numbers are not directly comparable across templates for
+  polycoder-full. Coder-only is unaffected (single-role
+  orchestration; reviewer budget never applied).
 
 The defensible claim is: *under the documented setup, with the
 documented prompts, on {{date}}, the following held*. That's
