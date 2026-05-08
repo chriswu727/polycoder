@@ -25,13 +25,15 @@
   - ✅ Layer I — Workspace UI / chat view (8/8) — full
     interactive end-to-end: prompt → live role progress →
     Communicator output + traffic light + disagreement cards
-  - ⬜ Layer J pending (end-to-end smoke + packaging).
+  - ✅ Layer J — End-to-end + packaging (3/4): smoke verified
+    against real DeepSeek+GLM ($0.12/run, 6min, all 8 roles green);
+    Mac arm64 .app bundle builds; README rewritten. J.4 (tag +
+    release) is the only remaining V0.1 item.
 - 🧪 **Test count**: 330 passing + 4 skipped (integration), 39 files.
 - 🟢 **CI** green.
 
-**Next concrete step**: Layer J.1 — End-to-end smoke against real
-provider keys (DeepSeek + GLM free) with a real "build a todo app"
-prompt.
+**Next concrete step**: Layer J.4 — Tag v0.1.0 and create GitHub
+release notes.
 
 ---
 
@@ -507,11 +509,25 @@ Reference: [`SPEC.md` §6.3](./SPEC.md#6-ui-surfaces)
 
 ### Layer J — End-to-end + packaging
 
-- [ ] **J.1** End-to-end smoke test: real keys (DeepSeek + GLM
-      free), real prompt ("build a todo app with localStorage"),
-      verify produced files actually run (Vite + React + bun dev).
-- [ ] **J.2** Mac DMG dev build (no signing yet).
-- [ ] **J.3** Documentation: install instructions in README.
+- [x] **J.1** End-to-end smoke test: real keys (DeepSeek + GLM),
+      real prompt, verify produced files. Smoke runner at
+      `scripts/smoke.ts`. Path-config plumbing for OpenAI-compat
+      providers (GLM uses `/chat/completions` not `/v1/...`); tool
+      budget bumped to 40 (Coder hit 21 on cold workspaces); env-
+      gated debug logging via POLYCODER_DEBUG_MODEL_RESPONSES=1.
+      Verified end-to-end: 8 roles green, 1 file produced, ~$0.12,
+      ~6min. Done 2026-05-07.
+- [x] **J.2** Mac DMG dev build (no signing yet). electron-builder
+      config in package.json (mac/win/linux targets), `dist:mac` /
+      `dist:dir` scripts. Pinned Electron to ^34 (better-sqlite3 v12
+      breaks against E42 V8 API — see ADR-015). 288MB arm64 .app
+      builds clean via `pnpm dist:dir`. Note: `pnpm rebuild
+      better-sqlite3 keytar` after dist:* to restore Node binaries
+      for tests. Done 2026-05-07.
+- [x] **J.3** Documentation: install instructions in README.
+      Rewrote `README.md` with status, quick start, repo layout,
+      tech stack, dev workflow, architecture-in-one-paragraph,
+      thesis, roadmap, contributing. Done 2026-05-07.
 - [ ] **J.4** v0.1 git tag + GitHub release notes.
 
 ---

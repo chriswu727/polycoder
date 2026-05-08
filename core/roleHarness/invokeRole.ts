@@ -17,7 +17,7 @@ import { assembleSystemPrompt, type DynamicPromptInputs } from './promptAssembly
 import { buildInputEnvelope, type BuildInputEnvelopeArgs } from './envelopeBuilder.js'
 
 export const MAX_ROLE_ATTEMPTS = 3
-export const MAX_TOOL_CALLS_PER_ROLE = 20
+export const MAX_TOOL_CALLS_PER_ROLE = 40
 
 export type InvokeRoleArgs = {
   role: RoleType
@@ -161,9 +161,19 @@ export async function invokeRole(args: InvokeRoleArgs): Promise<InvokeRoleResult
     try {
       parsed = parseRoleOutput(runResult.finalText)
     } catch (e) {
-      if (e instanceof EnvelopeParseError && attempt < MAX_ROLE_ATTEMPTS) {
-        userMessage = buildEnvelopeRePrompt(e, runResult.finalText)
-        continue
+      if (e instanceof EnvelopeParseError) {
+        if (process.env.POLYCODER_DEBUG_MODEL_RESPONSES === '1') {
+          // eslint-disable-next-line no-console
+          console.error(
+            `\n[invokeRole][${role}] envelope parse failed (attempt ${attempt}, reason ${e.reason.code}). Response head:\n` +
+              runResult.finalText.slice(0, 2000) +
+              '\n---END---\n',
+          )
+        }
+        if (attempt < MAX_ROLE_ATTEMPTS) {
+          userMessage = buildEnvelopeRePrompt(e, runResult.finalText)
+          continue
+        }
       }
       if (e instanceof EnvelopeParseError) {
         return {

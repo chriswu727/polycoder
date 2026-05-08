@@ -1,58 +1,199 @@
 # polycoder
 
-Multi-model AI coding agent for vibe coders. Optimized for **MVP → production
-evolution**, not first-prompt magic.
+Multi-model AI coding agent for vibe coders. 8 specialized roles
+(Translator, Designer, Architect, Coder, Adversary, Long-term Critic,
+Test Runner, Communicator) — each backed by a user-chosen LLM —
+collaborate through a fixed pipeline. Optimized for the **MVP →
+production evolution** problem that single-model tools (Lovable,
+Bolt, v0, Cursor) leave open.
 
 > Working name. Final name TBD.
 
 ## Status
 
-Design phase. No implementation yet.
-See [`SPEC.md`](./SPEC.md) for the full design specification.
+🟢 **V0.1 complete** — backend + Settings UI + chat-style workspace
+view. End-to-end pipeline verified against real DeepSeek + GLM API
+keys; produces real code in a real workspace.
 
-## Thesis
+```
+$ pnpm smoke --prompt 'create a one-page hello world html'
+…
+smoke: runIteration → completed in 308s
+  iteration_id    = 83b63002-…
+  traffic_light   = green
+  total_cost_usd  = 0.1214
+  files_changed   = 1
+  cost_records    = 8
+  role_outputs    = translator, designer, architect, coder,
+                    adversary, long_term_critic, test_runner,
+                    communicator
+```
 
-Existing vibe-coding tools (Lovable, Bolt, v0, Cursor Composer, Replit Agent,
-Devin) optimize for the first prompt's magic. The apps they produce reliably
-break by the 5th–7th iteration: no architectural memory, no enforced tests,
-no refactoring pressure. Tech debt rises monotonically until the app is
-unmaintainable.
+## Quick start
 
-This is structural, not a prompt-engineering problem. Single-model systems
-can't escape it.
+```bash
+git clone https://github.com/chriswu727/polycoder.git
+cd polycoder
+pnpm install         # native modules: better-sqlite3, keytar
+pnpm electron:dev    # launches Electron + Vite hot-reload
+```
 
-`polycoder` addresses this with **multi-model collaboration**: 8 cognitive
-roles, each backed by a user-chosen model (DeepSeek, Qwen, GLM, Claude,
-GPT, etc.), with **selective transparency** on disagreements between roles.
+In the app:
 
-The product thesis in one line:
+1. Create a workspace (point it at a real, empty directory)
+2. **Settings → Secrets** → Add API keys (DeepSeek / Qwen / GLM /
+   Anthropic / OpenAI-compat)
+3. **Settings → Team** → Click **Quick Setup: Budget** (or
+   China Pro / Mixed), or assign each of the 8 roles manually
+4. **Workspace** → type a prompt → **Send**
+5. Watch the 8 role badges light up live as the pipeline runs
+6. Read Communicator's user-facing summary; check **Files changed**
+   for what Coder wrote
 
-> *Lovable builds your MVP. We build your MVP so it can grow into a real product.*
+API keys are stored in your **OS keychain** (macOS Keychain Services,
+Windows Credential Manager, Linux Secret Service). They never touch
+the SQLite database, never leave your machine.
 
-## Why now
+## Repo layout
 
-Target market: **Chinese-market vibe coders**.
+```
+polycoder/
+├── core/                 ← role harness, orchestrator, types
+├── data/                 ← SQLite schema + CRUD
+├── electron/             ← main process, IPC, OS keychain
+├── providers/            ← LLM adapters (DeepSeek/Qwen/GLM/OpenAI/Anthropic)
+├── tools/                ← 10 V0 tools (read/write/edit_file, bash, …)
+├── src/                  ← React renderer (Vite)
+│   ├── components/
+│   │   ├── settings/     ← Secrets + Team Configuration tabs
+│   │   ├── workspace/    ← chat view + live progress + iteration result
+│   │   └── ui/           ← minimal Tailwind primitives
+│   └── stores/           ← Zustand: workspace + iteration
+├── scripts/              ← end-to-end smoke
+└── docs/                 ← spec, ADRs, prompt templates, learnings
+```
 
-- Lovable / Bolt / v0 / Cursor with Claude all unavailable or unreliable in China
-- Domestic alternatives target developers, not non-coders
-- Domestic LLMs (DeepSeek, Qwen, GLM) are 10–50× cheaper than Western counterparts
-- **Multi-model adversarial review is economically viable in China** in a way
-  it isn't in the West — 4–5 domestic models cost less than one Claude Sonnet call
+For a full navigation map start with [`map.md`](./map.md). For the
+design contract see [`SPEC.md`](./SPEC.md). For the build plan and
+remaining work see [`todo.md`](./todo.md).
 
-## Core architecture (one paragraph)
+## Tech stack
 
-Eight cognitive roles — Translator, Designer, Architect, Coder, Adversary,
-Long-term Critic, Test Runner, Communicator — orchestrated as a pipeline.
-Users plug in their own API keys (BYOK) and assign each role to a specific
-model. Disagreements between roles are surfaced to the user rather than
-internally resolved. Project memory persists across iterations; the
-Architect role enforces cross-prompt pattern consistency. See
-[`SPEC.md`](./SPEC.md) for full detail.
+| Layer        | Choice                          |
+| ------------ | ------------------------------- |
+| Language     | TypeScript 5.7 (strict + exactOptionalPropertyTypes) |
+| Renderer     | React 19 + Vite 7 + Tailwind 4  |
+| State        | Zustand 5                       |
+| Validation   | Zod 4 (with `z.toJSONSchema`)   |
+| App shell    | Electron 34 (see ADR-014/-015)  |
+| Data         | better-sqlite3 12 (sync)        |
+| Secrets      | keytar (OS keychain)            |
+| Test         | Vitest 2                        |
+| Package mgr  | pnpm 9                          |
 
-## Documents
+## Development workflow
 
-- [`SPEC.md`](./SPEC.md) — full design specification
-- [`docs/decisions.md`](./docs/decisions.md) — architecture decision log
+```bash
+# All-in-one quality gate (used by CI)
+pnpm check            # lint + typecheck + test
+
+# Single phase
+pnpm lint
+pnpm typecheck
+pnpm test
+
+# Watch
+pnpm test:watch       # vitest --watch
+
+# Renderer only (in browser, no Electron)
+pnpm dev              # vite dev server at localhost:5173
+
+# Electron app (renderer + main + hot-reload)
+pnpm electron:dev
+
+# End-to-end smoke against real LLM APIs
+POLYCODER_SMOKE_DEEPSEEK_KEY=sk-… \
+POLYCODER_SMOKE_GLM_KEY=… \
+pnpm smoke --prompt 'build a tiny todo app'
+
+# Build .app for personal use (Mac, no signing)
+pnpm dist:dir         # → release/mac-{arm64,x64}/polycoder.app
+pnpm dist:mac         # → release/polycoder-{version}.dmg
+# After dist:* you may need to restore Node binaries for tests:
+pnpm rebuild better-sqlite3 keytar
+```
+
+## Architecture in one paragraph
+
+A user prompt enters via the renderer's chat input, which calls
+`window.polycoder.iteration.start(...)` over IPC. The Electron main
+process runs `runIteration` which orchestrates the 8 roles through
+`invokeRole` calls. Each role gets a system prompt assembled from
+the shared preamble + role-specific markdown + a per-iteration
+dynamic suffix, then talks to its assigned LLM (DeepSeek / Qwen /
+GLM / Anthropic / OpenAI-compat) via a uniform `ModelProvider`
+interface. The role's output is parsed from XML envelope → JSON
+payload → Zod-validated. Architect-only synthesis-discipline regex
+flags lazy delegation. After Coder runs, parallel reviewers
+(Adversary / Long-term Critic / Test Runner) fan out via
+`Promise.all`. A pure `detectConflicts` function scans cross-role
+disagreements (5 rules). Communicator produces the final
+user-facing prose plus disagreement cards. Architect's
+`memory_updates` are applied to project memory **only on full
+success**. Events stream from the orchestrator's `PipelineEventBus`
+back to the renderer via `webContents.send`, where a Zustand
+reducer drives the live role-progress UI.
+
+For the full design see [`SPEC.md`](./SPEC.md) +
+[`docs/specs/{providers,tools,orchestrator}.md`](./docs/specs/).
+
+## Why polycoder
+
+- **Targets the MVP→production gap.** Lovable / Bolt / v0 / Cursor
+  optimize for the first prompt's magic. Their apps reliably break
+  by the 5th-7th iteration: no architectural memory, no enforced
+  tests, no refactoring pressure. polycoder addresses this with
+  multi-model collaboration (8 cognitive roles, each backed by a
+  user-chosen model), persistent project memory, and selective
+  transparency on cross-role disagreements.
+
+- **Targets the Chinese market.** Lovable / Bolt / v0 / Cursor
+  with Claude are unavailable or unreliable there. Domestic LLMs
+  (DeepSeek, Qwen, GLM) are 10-50× cheaper than Western
+  counterparts — making multi-model adversarial review economically
+  viable for the first time.
+
+- **BYOK + per-role model assignment.** Cursor locks you to Claude;
+  v0 locks you to GPT. polycoder lets you bring any combination of
+  API keys and assign each role its own (provider, model). One
+  preset click for Budget / China Pro / Mixed, or hand-configure
+  every row.
+
+## Roadmap
+
+- **V0.1 ✅** — backend + Settings UI + chat workspace + end-to-end
+  smoke against real APIs (current).
+- **V0.2** — Iteration Survival Test benchmark (5 app templates ×
+  10 iterations vs Lovable / Bolt / single-Claude); L2 transparency
+  (expandable team-discussion view).
+- **V0.3** — Local sandbox (WebContainer or e2b) so the produced
+  app runs in-app.
+- **V0.4** — Polish, more providers (Doubao / Kimi / MiniMax),
+  custom prompt overrides, project memory inspector.
+- **V1.0** — Mac DMG + Win installer with code signing, auto-update,
+  in-app onboarding, public release.
+
+See [`todo.md`](./todo.md) for the full task breakdown.
+
+## Contributing
+
+Spec-first development:
+
+- If something in `SPEC.md` turns out wrong during implementation,
+  update SPEC.md first, then the code.
+- New non-trivial decisions get an ADR in `docs/decisions.md`.
+- All commits go through `pnpm check` (lint + typecheck + test) +
+  CI (`.github/workflows/ci.yml`).
 
 ## License
 

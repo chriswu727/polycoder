@@ -25,6 +25,11 @@ export class GLMProvider extends OpenAICompatProvider {
       baseUrl: opts.baseUrl ?? GLM_DEFAULT_BASE_URL,
       ...(opts.fetchImpl !== undefined ? { fetchImpl: opts.fetchImpl } : {}),
       modelInfos: opts.modelInfos ?? GLM_MODELS,
+      // GLM's base_url already encodes the API version (/api/paas/v4),
+      // so the chat endpoint is /chat/completions — NOT
+      // /v1/chat/completions like OpenAI / DeepSeek / Qwen.
+      chatEndpointPath: '/chat/completions',
+      modelsEndpointPath: '/models',
     })
   }
 

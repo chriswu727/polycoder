@@ -668,3 +668,51 @@ stable + pnpm interop has well-documented patterns.
   and re-verify CI.
 - `supported-architectures` in `.npmrc` retained for future-proofing
   (also helps better-sqlite3 lockfile portability).
+
+---
+
+## ADR-015: Pin Electron to ^34.x (better-sqlite3 v12 native compat)
+
+- **Date**: 2026-05-08
+- **Status**: Accepted (revisitable)
+
+### Context
+
+Initial scaffolding (A.3) installed `electron@^42.0.0` (latest at the
+time). When packaging the app via `electron-builder` (`pnpm dist:dir`),
+`@electron/rebuild` failed to build `better-sqlite3@12.9.0` against
+Electron 42's V8 headers:
+
+```
+src/better_sqlite3.cpp:60:65: error: too few arguments to function
+call, expected 3, have 2
+   60 |   v8::Local<v8::External> data = v8::External::New(isolate, addon);
+```
+
+Electron 42 ships a newer V8 in which `External::New` requires a
+`ExternalPointerTypeTag` argument. better-sqlite3 12.9 hasn't been
+updated for it.
+
+### Decision
+
+Pin Electron to `^34.0.0`. Don't upgrade further until either:
+
+1. better-sqlite3 ships a release that supports Electron 42's V8 API
+2. We migrate to a different SQLite binding (libsql, `node:sqlite` —
+   the new Node 22+ built-in, or a wasm fallback)
+
+### Rationale
+
+- Electron 34 (Jan 2025 line) is widely adopted and has prebuilt
+  binaries for `better-sqlite3` + `keytar`
+- `pnpm dist:dir` succeeds; the produced `.app` is ~290MB (typical)
+- Tests run against Node, so this only affects packaging
+
+### Consequences
+
+- Devs working on packaging must `pnpm rebuild better-sqlite3 keytar`
+  after a `pnpm dist:*` build to restore Node-compatible native
+  binaries (electron-rebuild swaps them in-place).
+- `node:sqlite` (built-in to Node 22+) is a future migration path
+  that would eliminate the native-module rebuild dance entirely.
+  Considered for V1.0.

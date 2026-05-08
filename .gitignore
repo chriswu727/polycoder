@@ -17,6 +17,9 @@ release/
 .next/
 *.log
 
+# electron-builder cache
+.cache/
+
 # Python
 __pycache__/
 *.pyc

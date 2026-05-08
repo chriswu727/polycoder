@@ -35,6 +35,17 @@ export type OpenAICompatProviderOptions = {
   modelInfos?: ModelInfo[]
   /** Pricing fallback when a model isn't in modelInfos. Defaults to zero. */
   defaultModelInfo?: ModelInfo
+  /**
+   * Path appended to base_url for chat completions. Defaults to
+   * `/v1/chat/completions` (the OpenAI shape). GLM uses
+   * `/chat/completions` (their /v4 base already includes the version).
+   */
+  chatEndpointPath?: string
+  /**
+   * Path appended to base_url for the models listing endpoint when
+   * listModels() falls back to the network. Defaults to `/v1/models`.
+   */
+  modelsEndpointPath?: string
 }
 
 export class OpenAICompatProvider implements ModelProvider {
@@ -44,6 +55,8 @@ export class OpenAICompatProvider implements ModelProvider {
   protected readonly fetchImpl: FetchImpl
   protected readonly modelInfos: ModelInfo[]
   protected readonly defaultModelInfo: ModelInfo | undefined
+  protected readonly chatEndpointPath: string
+  protected readonly modelsEndpointPath: string
 
   constructor(opts: OpenAICompatProviderOptions) {
     this.apiKey = opts.apiKey
@@ -51,6 +64,8 @@ export class OpenAICompatProvider implements ModelProvider {
     this.fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis)
     this.modelInfos = opts.modelInfos ?? []
     this.defaultModelInfo = opts.defaultModelInfo
+    this.chatEndpointPath = opts.chatEndpointPath ?? '/v1/chat/completions'
+    this.modelsEndpointPath = opts.modelsEndpointPath ?? '/v1/models'
   }
 
   async listModels(): Promise<ModelInfo[]> {
@@ -61,7 +76,7 @@ export class OpenAICompatProvider implements ModelProvider {
     try {
       const resp = await httpRequest({
         method: 'GET',
-        url: `${this.base_url}/v1/models`,
+        url: `${this.base_url}${this.modelsEndpointPath}`,
         headers: this.authHeaders(),
         fetchImpl: this.fetchImpl,
       })
@@ -78,7 +93,7 @@ export class OpenAICompatProvider implements ModelProvider {
     const body = this.buildRequestBody(request, false)
     const resp = await httpRequest({
       method: 'POST',
-      url: `${this.base_url}/v1/chat/completions`,
+      url: `${this.base_url}${this.chatEndpointPath}`,
       headers: this.authHeaders(true),
       body: JSON.stringify(body),
       ...(signal !== undefined ? { signal } : {}),
@@ -100,7 +115,7 @@ export class OpenAICompatProvider implements ModelProvider {
     const body = this.buildRequestBody(request, true)
     const resp = await httpRequest({
       method: 'POST',
-      url: `${this.base_url}/v1/chat/completions`,
+      url: `${this.base_url}${this.chatEndpointPath}`,
       headers: this.authHeaders(true),
       body: JSON.stringify(body),
       ...(signal !== undefined ? { signal } : {}),
