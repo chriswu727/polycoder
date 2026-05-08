@@ -25,15 +25,16 @@
   - ✅ Layer I — Workspace UI / chat view (8/8) — full
     interactive end-to-end: prompt → live role progress →
     Communicator output + traffic light + disagreement cards
-  - ✅ Layer J — End-to-end + packaging (3/4): smoke verified
+  - ✅ Layer J — End-to-end + packaging (4/4): smoke verified
     against real DeepSeek+GLM ($0.12/run, 6min, all 8 roles green);
-    Mac arm64 .app bundle builds; README rewritten. J.4 (tag +
-    release) is the only remaining V0.1 item.
+    Mac arm64 .app bundle builds; README rewritten; v0.1.0 tagged
+    and released.
 - 🧪 **Test count**: 330 passing + 4 skipped (integration), 39 files.
 - 🟢 **CI** green.
 
-**Next concrete step**: Layer J.4 — Tag v0.1.0 and create GitHub
-release notes.
+🎉 **V0.1 SHIPPED 2026-05-07.**
+
+**Next phase**: V0.2 — Iteration Survival Test benchmark (see below).
 
 ---
 
@@ -528,7 +529,9 @@ Reference: [`SPEC.md` §6.3](./SPEC.md#6-ui-surfaces)
       Rewrote `README.md` with status, quick start, repo layout,
       tech stack, dev workflow, architecture-in-one-paragraph,
       thesis, roadmap, contributing. Done 2026-05-07.
-- [ ] **J.4** v0.1 git tag + GitHub release notes.
+- [x] **J.4** v0.1 git tag + GitHub release notes. Tagged v0.1.0,
+      release published at github.com/chriswu727/polycoder/releases
+      /tag/v0.1.0. Done 2026-05-07.
 
 ---
 
