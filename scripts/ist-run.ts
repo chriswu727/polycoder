@@ -111,8 +111,12 @@ function parseIters(s: string | undefined): IterN[] {
   fail(`--iter must be 1..5 or all (got ${s})`)
 }
 
-function parsePreset(s: string | undefined, system: SystemId): Preset {
-  const fallback: Preset = system === 'polycoder-full' ? 'china_pro' : 'budget'
+function parsePreset(s: string | undefined, _system: SystemId): Preset {
+  // Default to `budget` — only requires DeepSeek + GLM, which is
+  // what we have in our IST key set. `china_pro` would also need
+  // Qwen for 5 of 8 roles; `mixed` would need Anthropic. Override
+  // with --preset if you have those keys.
+  const fallback: Preset = 'budget'
   if (!s) return fallback
   if (s === 'budget' || s === 'china_pro' || s === 'mixed') return s
   fail(`--preset must be budget|china_pro|mixed (got ${s})`)

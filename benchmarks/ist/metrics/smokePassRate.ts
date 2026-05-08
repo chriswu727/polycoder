@@ -181,41 +181,49 @@ export async function computeSPR(args: SPRArgs): Promise<SPRComputeResult> {
 
 // ─── Page capture helper ────────────────────────────────────────────
 
+// Pass the function body as a STRING, not a function literal. tsx
+// (via esbuild) injects `__name` annotations into nested function
+// declarations during compile, but Playwright's serialization
+// transport doesn't carry esbuild's helpers, so the browser-side
+// eval throws ReferenceError: __name is not defined. Stringifying
+// bypasses tsx entirely — Playwright sends raw source.
+const CAPTURE_SCRIPT = `(() => {
+  var isVisible = function (el) {
+    var e = el;
+    var r = e.getBoundingClientRect();
+    var cs = window.getComputedStyle(e);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    if (Number(cs.opacity) < 0.05) return false;
+    if (r.width === 0 || r.height === 0) return false;
+    return true;
+  };
+  var interactiveSel = 'input, button, select, textarea, a[href], [role="button"], [contenteditable="true"]';
+  var interactive = Array.prototype.filter.call(
+    document.querySelectorAll(interactiveSel),
+    isVisible,
+  ).length;
+  var fragments = new Set();
+  var candSel = 'h1, h2, h3, h4, h5, h6, button, label, a[href], [role="button"], legend, summary';
+  Array.prototype.forEach.call(document.querySelectorAll(candSel), function (el) {
+    if (!isVisible(el)) return;
+    var t = (el.innerText || '').trim();
+    if (t.length >= 3 && t.length <= 80) fragments.add(t);
+  });
+  Array.prototype.forEach.call(
+    document.querySelectorAll('input[placeholder], textarea[placeholder]'),
+    function (el) {
+      var p = (el.placeholder || '').trim();
+      if (p.length >= 3 && p.length <= 80) fragments.add(p);
+    },
+  );
+  return {
+    text_fragments: Array.from(fragments).slice(0, 30),
+    interactive_count: interactive,
+  };
+})()`
+
 async function capture(page: import('@playwright/test').Page): Promise<SPRGolden> {
-  return await page.evaluate(() => {
-    function isVisible(el: Element): boolean {
-      const e = el as HTMLElement
-      const r = e.getBoundingClientRect()
-      const cs = window.getComputedStyle(e)
-      if (cs.display === 'none' || cs.visibility === 'hidden') return false
-      if (Number(cs.opacity) < 0.05) return false
-      if (r.width === 0 || r.height === 0) return false
-      return true
-    }
-    const interactive = Array.from(
-      document.querySelectorAll(
-        'input, button, select, textarea, a[href], [role="button"], [contenteditable="true"]',
-      ),
-    ).filter(isVisible).length
-    const fragments = new Set<string>()
-    const candidates = document.querySelectorAll(
-      'h1, h2, h3, h4, h5, h6, button, label, a[href], [role="button"], legend, summary',
-    )
-    candidates.forEach((el) => {
-      if (!isVisible(el)) return
-      const t = (el as HTMLElement).innerText?.trim() ?? ''
-      if (t.length >= 3 && t.length <= 80) fragments.add(t)
-    })
-    // Also placeholders.
-    document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach((el) => {
-      const p = (el as HTMLInputElement).placeholder?.trim() ?? ''
-      if (p.length >= 3 && p.length <= 80) fragments.add(p)
-    })
-    return {
-      text_fragments: Array.from(fragments).slice(0, 30),
-      interactive_count: interactive,
-    }
-  })
+  return (await page.evaluate(CAPTURE_SCRIPT)) as SPRGolden
 }
 
 // ─── HTTP server helper ─────────────────────────────────────────────

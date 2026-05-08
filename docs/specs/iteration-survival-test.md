@@ -144,11 +144,13 @@ begins. Once committed, prompts cannot be edited mid-experiment
 ### 5.1 polycoder-full
 
 - **Build**: tag `v0.1.0` (this release).
-- **Team**: China-Pro preset.
-  - Translator / Designer / Coder / Test Runner / Communicator:
-    DeepSeek-V3 (`deepseek-chat`)
-  - Architect / Adversary / Long-term Critic: GLM-4.5
-    (`glm-4.5`)
+- **Team**: **Budget preset** (changed from China-Pro after V0.2.9
+  attempt 1 — China-Pro requires a Qwen key, which we don't have).
+  Concretely:
+  - Translator / Architect / Coder / Long-term Critic / Test Runner:
+    DeepSeek (`deepseek-chat` / `deepseek-coder`)
+  - Designer / Adversary / Communicator: GLM (`glm-4-plus` /
+    `glm-4-flash`)
 - **Settings**: defaults except `MAX_TOOL_CALLS_PER_ROLE=40` (the
   V0.1 production value).
 - **Workspace**: a fresh empty directory per template. Iteration 1
