@@ -13,19 +13,19 @@
   drafted. SPEC, ADRs (1-13), 8 role prompts + shared preamble,
   3 implementation specs (providers / tools / orchestrator), this
   build plan, and the project map.
-- 🟡 **Implementation phase: V0.1 Layers A-E complete.**
+- 🟡 **Implementation phase: V0.1 Layers A-F complete.**
   - ✅ Layer A — Repo scaffolding (5/5)
   - ✅ Layer B — Data model + persistence (6/6)
   - ✅ Layer C — Provider abstraction (11/11)
   - ✅ Layer D — Secret manager (4/4)
   - ✅ Layer E — Tool framework + 10 V0 tools (15/15)
-  - ⬜ Layers F-J pending. See per-layer task lists below.
-- 🧪 **Test count**: 218 passing + 4 skipped (integration), 27 files.
+  - ✅ Layer F — Role harness (9/9)
+  - ⬜ Layers G-J pending. See per-layer task lists below.
+- 🧪 **Test count**: 281 passing + 4 skipped (integration), 33 files.
 - 🟢 **CI** green.
 
-**Next concrete step**: Layer F.1 — Role definitions (one TS file
-per role under `core/roles/`, loading the static prefix from
-`docs/prompts/*.md`).
+**Next concrete step**: Layer G.1 — Pipeline event bus
+(`core/orchestrator/events.ts`).
 
 ---
 
@@ -292,29 +292,60 @@ Reference: [`docs/specs/tools.md`](./docs/specs/tools.md)
 
 Reference: [`docs/specs/orchestrator.md`](./docs/specs/orchestrator.md) §3
 
-- [ ] **F.1** Role definitions (one TS file per role under
-      `core/roles/`). Each loads the static prefix from
-      `docs/prompts/*.md` at startup.
-- [ ] **F.2** `assembleSystemPrompt` (`core/roleHarness/promptAssembly.ts`).
-      Concatenates shared preamble + role static prefix + boundary
-      marker + dynamic suffix.
-- [ ] **F.3** XML envelope builder (`core/roleHarness/envelopeBuilder.ts`).
-      Constructs `<role-input>` from upstream outputs.
-- [ ] **F.4** XML envelope parser (`core/roleHarness/envelopeParser.ts`).
-      Parses `<role-output>` → typed object. Robust against minor
-      whitespace / formatting issues; rejects malformed input
-      cleanly.
-- [ ] **F.5** Payload validator (`core/roleHarness/payloadValidator.ts`).
-      Zod-based; per-role outputSchema.
-- [ ] **F.6** `runWithTools` inner loop
-      (`core/roleHarness/runWithTools.ts`). Provider call → tool use
-      → tool execution → tool result → repeat.
-- [ ] **F.7** `invokeRole` with retry/re-prompt
-      (`core/roleHarness/invokeRole.ts`). Includes the 6 re-prompt
-      cases per orchestrator spec §6.
-- [ ] **F.8** Unit tests for envelope parser (good + malformed
-      inputs).
-- [ ] **F.9** Unit tests for payload validators per role.
+- [x] **F.1** Role definitions in `core/roles/index.ts`.
+      ROLE_DEFINITIONS map binds each RoleType to: prompt_filename,
+      allowed_tools (from registry), payload_schema (from
+      core/types/payloads/), output_payload_budget_tokens,
+      default_model_recommendations per preset, whenToUse summary.
+      Done 2026-05-08.
+- [x] **F.2** `assembleSystemPrompt` (`core/roleHarness/promptAssembly.ts`).
+      Lazy-loads + caches docs/prompts/*.md. Concatenates shared
+      preamble + role markdown (with documented "## Dynamic suffix"
+      stripped) + boundary marker + runtime-rendered dynamic suffix
+      (workspace name, iteration #, project memory summary). 8 tests
+      pass — covers all 8 roles + boundary-marker uniqueness.
+      Done 2026-05-08.
+- [x] **F.3** XML envelope builder (`core/roleHarness/envelopeBuilder.ts`).
+      `buildInputEnvelope` produces `<role-input>` from upstream
+      outputs in stable role order. Escapes XML chars in free-form
+      task; serializes structured task as JSON; optional ui_lang +
+      iteration_history. Done 2026-05-08.
+- [x] **F.4** XML envelope parser (`core/roleHarness/envelopeParser.ts`).
+      `parseRoleOutput` extracts the (single) <role-output> envelope
+      from arbitrary surrounding text, strips outer + inner code
+      fences, validates role/iteration/status/payload. Distinct error
+      reason codes: no_envelope, multiple_envelopes,
+      malformed_attributes, invalid_iteration, invalid_status,
+      missing_payload, payload_not_json. Done 2026-05-08.
+- [x] **F.5** Per-role payload Zod schemas in
+      `core/types/payloads/{translator,designer,architect,coder,
+      adversary,longTermCritic,testRunner,communicator}.ts` plus
+      barrel `index.ts` with `PAYLOAD_SCHEMAS` dispatch table.
+      Each uses `passthrough()` for unknown LLM extras, strict on
+      required fields and enum values. 16 tests. Done 2026-05-08.
+- [x] **F.6** `runWithTools` inner loop
+      (`core/roleHarness/runWithTools.ts`). Calls provider.chat,
+      handles tool_calls (Zod validates input, executes via registry,
+      returns errors as tool results), accumulates usage,
+      ToolLoopBudgetExceeded after maxToolCalls (default 20).
+      5 tests. Done 2026-05-08.
+- [x] **F.7** `invokeRole` with retry/re-prompt
+      (`core/roleHarness/invokeRole.ts`). 6 re-prompt cases:
+      envelope parse failure (3 attempts), payload schema violation
+      (3 attempts), synthesis-discipline (Architect-only),
+      tool-loop budget exceeded (no retry), retryable provider error
+      (exponential backoff up to 3 attempts), terminal provider
+      error (no retry). Synthesis-discipline detector +
+      corrective re-prompt in `core/orchestrator/synthesisDiscipline.ts`
+      (7 tests). 8 invokeRole tests covering happy path + each
+      re-prompt class. Done 2026-05-08.
+- [x] **F.8** Envelope tests (`core/roleHarness/envelope.test.ts`).
+      17 tests: builder happy paths (escape, JSON, ordering, ui_lang)
+      + parser happy paths (canonical, prose-around, code fences,
+      all 18 valid statuses) + 7 distinct failure-mode cases.
+      Done 2026-05-08.
+- [x] **F.9** Per-role payload schema tests — see F.5 (16 tests in
+      `core/types/payloads/payloads.test.ts`). Done 2026-05-08.
 
 ### Layer G — Pipeline orchestrator
 
