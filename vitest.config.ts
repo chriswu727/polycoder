@@ -5,7 +5,13 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['core/**/*.test.ts', 'providers/**/*.test.ts', 'tools/**/*.test.ts', 'data/**/*.test.ts'],
+    include: [
+      'core/**/*.test.ts',
+      'providers/**/*.test.ts',
+      'tools/**/*.test.ts',
+      'data/**/*.test.ts',
+      'electron/**/*.test.ts',
+    ],
     exclude: ['node_modules', 'dist', 'build'],
     coverage: {
       provider: 'v8',

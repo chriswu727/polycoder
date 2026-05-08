@@ -282,10 +282,11 @@ isn't here, add it.
 ## 8. Status
 
 - ✅ **Design phase complete.** SPEC, ADRs (1-13), learnings, prompt drafts, 3 implementation contract specs.
-- 🟡 **Implementation phase: V0.1 Layers A + B + C complete.**
-  Repo scaffolding, data layer, provider abstraction with adapters
-  for DeepSeek, Qwen, GLM, OpenAI-compat, and Anthropic. 127 tests
-  passing (+ 4 opt-in integration tests). See [`todo.md`](./todo.md).
+- 🟡 **Implementation phase: V0.1 Layers A + B + C + D complete.**
+  Repo scaffolding, data layer, provider abstraction (5 adapters),
+  and secret manager (OS keychain via keytar + IPC bridge).
+  151 tests passing (+ 4 opt-in integration tests). CI green.
+  See [`todo.md`](./todo.md).
 - Working name `polycoder` is provisional (ADR-006).
 - GitHub repo: [`chriswu727/polycoder`](https://github.com/chriswu727/polycoder)
 

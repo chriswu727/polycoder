@@ -13,16 +13,17 @@
   drafted. SPEC, ADRs (1-13), 8 role prompts + shared preamble,
   3 implementation specs (providers / tools / orchestrator), this
   build plan, and the project map.
-- 🟡 **Implementation phase: V0.1 Layers A + B + C complete.**
+- 🟡 **Implementation phase: V0.1 Layers A + B + C + D complete.**
   - ✅ Layer A — Repo scaffolding (5/5)
   - ✅ Layer B — Data model + persistence (6/6)
   - ✅ Layer C — Provider abstraction (11/11)
-  - ⬜ Layers D-J pending. See per-layer task lists below.
-- 🧪 **Test count**: 127 passing + 4 skipped (integration), 16 files.
+  - ✅ Layer D — Secret manager (4/4)
+  - ⬜ Layers E-J pending. See per-layer task lists below.
+- 🧪 **Test count**: 151 passing + 4 skipped (integration), 20 files.
+- 🟢 **CI** green since b233087.
 
-**Next concrete step**: Layer D.1 — Electron secure storage
-abstraction (OS keychain integration via `keytar` or
-`@napi-rs/keyring`).
+**Next concrete step**: Layer E.1 — `ToolDef` interface +
+`buildTool` factory in `tools/ToolDef.ts`.
 
 ---
 
@@ -180,22 +181,40 @@ Reference: [`docs/specs/providers.md`](./docs/specs/providers.md)
 
 Reference: [`SPEC.md` §8](./SPEC.md#8-storage--security)
 
-- [ ] **D.1** Electron secure storage abstraction
-      (`electron/secrets/keystore.ts`):
-      - macOS → Keychain Services (via `keytar` or
-        `@napi-rs/keyring`)
-      - Windows → Credential Manager
-      - Linux → Secret Service / libsecret
-- [ ] **D.2** Secret CRUD on top of keystore (`data/secrets.ts`):
-      `addSecret`, `getSecret`, `listSecrets`, `deleteSecret`,
-      `updateSecret`. Stored data: plaintext key never persisted to
-      SQLite — only Secret metadata (name, provider, last_tested);
-      key lives in OS keychain only.
-- [ ] **D.3** `testConnection(secret)` — calls
-      `provider.testConnection()` and updates `last_tested` /
-      `available_models` on success.
-- [ ] **D.4** IPC bridge so renderer can call Secret CRUD without
-      seeing the actual API key (only the metadata).
+- [x] **D.1** OS keychain abstraction
+      (`electron/secrets/keystore.ts`). KeyStore interface +
+      OsKeystore (keytar 7.9.0, cross-platform: macOS Keychain,
+      Win Credential Manager, Linux Secret Service) +
+      InMemoryKeystore (test seam). Service name `polycoder`,
+      account = `${workspace_id}:${secret_id}`. accountFor/parseAccount
+      helpers for cleanup workflows. 6 contract tests pass.
+      Done 2026-05-08.
+- [x] **D.2** Secret CRUD on top of keystore (`data/secrets.ts`).
+      `addSecret` writes metadata + key together; rolls back metadata
+      if keystore write fails (verified by test). `getHydratedSecret`
+      returns metadata + plaintext for provider construction;
+      `removeSecret` is idempotent across both stores;
+      `pruneOrphanedKeys` cleans keystore entries whose metadata is
+      gone. Plaintext key NEVER persisted to SQLite. 10 tests pass.
+      Done 2026-05-08.
+- [x] **D.3** `testSecret(db, keystore, input, opts)` in
+      `data/secretsTest.ts`. Hydrates secret → builds provider via
+      registry → calls `provider.testConnection()` → on success,
+      persists `available_models` + `last_tested_at` to metadata.
+      On failure, metadata untouched. fetchImpl injection for tests.
+      3 tests pass (success / auth-fail / missing). Done 2026-05-08.
+- [x] **D.4** IPC bridge for secret CRUD.
+      `electron/ipc/channels.ts` (single source of truth for channel
+      names) + `electron/ipc/secretsHandlers.ts` (pure handler fns:
+      handleAddSecret / handleListSecrets / handleRemoveSecret /
+      handleTestSecret — testable without Electron).
+      `electron/preload.ts` exposes typed `window.polycoder.secrets`
+      API. `electron/main.ts` opens DB at `userData/polycoder.db`,
+      instantiates `OsKeystore`, registers handlers via
+      `ipcMain.handle`. Verified `pnpm build:electron` emits all
+      .js to `dist/electron/`. 4 handler tests pass (including
+      verification that plaintext key never appears in any
+      response). Done 2026-05-08.
 
 ### Layer E — Tool framework + V0 tools
 

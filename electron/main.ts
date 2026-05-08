@@ -1,12 +1,25 @@
 // Electron main process entry point.
-// Responsibilities (V0.1): create the app window, load the renderer
-// (Vite dev server in dev, file:// in prod), basic lifecycle.
-//
-// Layers D (Secret manager) and beyond will add IPC handlers here.
+// Creates the app window, wires up IPC handlers, opens the
+// app-private SQLite database, and instantiates the OS keystore.
 
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { mkdirSync } from 'node:fs'
+import { openDatabase } from '../data/connection.js'
+import { OsKeystore } from './secrets/keystore.js'
+import { IPC_CHANNELS } from './ipc/channels.js'
+import {
+  handleAddSecret,
+  handleListSecrets,
+  handleRemoveSecret,
+  handleTestSecret,
+  type AddSecretRequest,
+  type ListSecretsRequest,
+  type RemoveSecretRequest,
+  type TestSecretRequest,
+} from './ipc/secretsHandlers.js'
+import type Database from 'better-sqlite3'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -15,6 +28,35 @@ const isDev = !app.isPackaged
 const RENDERER_DEV_URL = 'http://localhost:5173'
 
 let mainWindow: BrowserWindow | null = null
+let db: Database.Database | null = null
+const keystore = new OsKeystore()
+
+function getDatabasePath(): string {
+  const userData = app.getPath('userData')
+  mkdirSync(userData, { recursive: true })
+  return join(userData, 'polycoder.db')
+}
+
+function setupIpcHandlers(database: Database.Database): void {
+  const deps = { db: database, keystore }
+
+  ipcMain.handle(
+    IPC_CHANNELS.SECRET_ADD,
+    (_e, req: AddSecretRequest) => handleAddSecret(deps, req),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.SECRET_LIST,
+    (_e, req: ListSecretsRequest) => handleListSecrets(deps, req),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.SECRET_REMOVE,
+    (_e, req: RemoveSecretRequest) => handleRemoveSecret(deps, req),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.SECRET_TEST,
+    (_e, req: TestSecretRequest) => handleTestSecret(deps, req),
+  )
+}
 
 function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -48,6 +90,9 @@ function createMainWindow(): BrowserWindow {
 }
 
 void app.whenReady().then(() => {
+  db = openDatabase(getDatabasePath())
+  setupIpcHandlers(db)
+
   mainWindow = createMainWindow()
 
   app.on('activate', () => {
@@ -60,5 +105,12 @@ void app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
+  }
+})
+
+app.on('before-quit', () => {
+  if (db) {
+    db.close()
+    db = null
   }
 })
