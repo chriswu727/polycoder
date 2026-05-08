@@ -13,16 +13,15 @@
   drafted. SPEC, ADRs (1-13), 8 role prompts + shared preamble,
   3 implementation specs (providers / tools / orchestrator), this
   build plan, and the project map.
-- 🟡 **Implementation phase: Layer A in progress.**
-  - ✅ A.1 Repo scaffolding (pnpm, TS strict, ESLint, Prettier)
-  - ✅ A.2 Vite + React 19 + Tailwind v4 + cn() helper
-  - ✅ A.3 Electron 42 main + preload (sandbox, contextIsolation)
-  - ✅ A.4 vitest + GitHub Actions CI (lint + typecheck + test + build)
-  - ✅ A.5 better-sqlite3 smoke test (CREATE/INSERT/SELECT, WAL, FK)
-- ⬜ Layers B-J pending. See per-layer task lists below.
+- 🟡 **Implementation phase: V0.1 Layers A + B complete.**
+  - ✅ Layer A — Repo scaffolding (5/5)
+  - ✅ Layer B — Data model + persistence (6/6)
+  - ⬜ Layers C-J pending. See per-layer task lists below.
+- 🧪 **Test count**: 74 passing across 8 test files.
 
-**Next concrete step**: Layer B.1 (TypeScript types for Workspace,
-Secret, ProjectMemory, etc.).
+**Next concrete step**: Layer C.1 — define `ModelProvider` interface
+(types only, no implementation) per
+[`docs/specs/providers.md`](./docs/specs/providers.md) §2.
 
 ---
 
@@ -70,19 +69,50 @@ secrets and role-model assignments. No benchmarks yet.
 
 Reference: [`SPEC.md` §5](./SPEC.md#5-data-model)
 
-- [ ] **B.1** Define TypeScript types for `Workspace`, `Secret`,
+- [x] **B.1** Define TypeScript types for `Workspace`, `Secret`,
       `RoleAssignment`, `ProjectMemory`, `IterationTrace`,
-      `RoleOutput` envelope, all role payload types (Zod schemas
-      derived from `docs/prompts/*.md` output sections).
-- [ ] **B.2** SQLite schema migration v1: tables for `workspaces`,
+      `RoleOutput` envelope. Zod schemas in `core/types/{role,
+      workspace, projectMemory, cost, iteration}.ts`. Per-role
+      payload schemas remain `z.unknown()` for now — to be tightened
+      in Layer F when the role harness validates them. 24 tests
+      pass. Done 2026-05-08.
+- [x] **B.2** SQLite schema migration v1: tables for `workspaces`,
       `secrets`, `role_assignments`, `iterations`, `project_memory`,
-      `cost_records`. (`schema.sql`)
-- [ ] **B.3** Workspace CRUD (`data/workspace.ts`).
-- [ ] **B.4** Project memory CRUD (`data/projectMemory.ts`) with
-      structured update support (decisions, conventions, components,
-      tech debt — see `docs/specs/tools.md` §4.6).
-- [ ] **B.5** Iteration history CRUD (`data/iterations.ts`).
-- [ ] **B.6** Cost records CRUD (`data/costRecords.ts`).
+      `cost_records`, plus `schema_migrations` for version tracking.
+      `data/schema.sql` + `data/connection.ts` (openDatabase /
+      runMigrations / getCurrentSchemaVersion). WAL + foreign_keys
+      ON. Project memory stored as single JSON blob per workspace
+      (read pattern is always full snapshot). 7 connection tests
+      pass including cascade-delete and idempotent migration.
+      Done 2026-05-08.
+- [x] **B.3** Workspace CRUD (`data/workspace.ts`). createWorkspace
+      seeds 8 empty role assignments + empty project memory in one
+      transaction. Secret CRUD (metadata only — keys stay in
+      keychain). RoleAssignment update + ON DELETE SET NULL when a
+      Secret is deleted. `getHydratedWorkspace` returns workspace +
+      secrets + assignments in one fetch. 11 tests pass. Caught and
+      fixed: `base_url` schema needed `.nullable()` not `.optional()`
+      (SQLite returns null, Zod optional requires undefined).
+      Done 2026-05-08.
+- [x] **B.4** Project memory CRUD (`data/projectMemory.ts`).
+      `applyMemoryUpdate` is transactional — partial updates roll
+      back on error (verified by test). Supports add_decisions,
+      add_conventions, add_components, add_tech_debt,
+      supersede_decisions (auto-links old↔new via supersedes/
+      superseded_by), set_design_tokens. `markTechDebtResolved` for
+      flipping resolved flag with iteration number. 10 tests pass.
+      Done 2026-05-08.
+- [x] **B.5** Iteration history CRUD (`data/iterations.ts`).
+      `startIteration` auto-increments iteration_number per workspace
+      (independent sequences per workspace verified). `finishIteration`
+      computes duration_ms server-side, persists role_outputs and
+      conflicts as JSON. `listIterations` paginates newest-first.
+      10 tests pass. Done 2026-05-08.
+- [x] **B.6** Cost records CRUD (`data/costRecords.ts`).
+      `appendCostRecord` writes one row per role invocation;
+      `totalsByIteration` / `totalsByWorkspace` / `totalsByModel` /
+      `totalsByRole` aggregate via SQL SUM. Cascade delete from
+      iterations verified. 7 tests pass. Done 2026-05-08.
 
 ### Layer C — Provider abstraction
 

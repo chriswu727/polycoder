@@ -1,4 +1,8 @@
-// Core type exports. Files added incrementally as layers B+ are built.
-// See docs/specs/orchestrator.md and docs/specs/tools.md for the contracts.
+// Barrel export for all polycoder shared types. Files added incrementally
+// as layers are built — see docs/specs/{providers,tools,orchestrator}.md.
 
-export {}
+export * from './role.js'
+export * from './workspace.js'
+export * from './projectMemory.js'
+export * from './cost.js'
+export * from './iteration.js'
