@@ -59,8 +59,21 @@ export async function computeCCD(args: CCDArgs): Promise<CCD> {
     }
   }
 
+  const fatals = collectFatalErrors(r.json)
   const complexities = extractComplexityValues(r.json)
   if (complexities.length === 0) {
+    if (fatals.length > 0) {
+      return {
+        status: 'fail',
+        applicable: true,
+        applicable_reason: `parse error in source: ${fatals[0]!.slice(0, 200)}`,
+        files_analyzed: sources.length,
+        mean_complexity: null,
+        max_complexity: null,
+        drift_from_iter1: null,
+        duration_ms: Date.now() - start,
+      }
+    }
     return {
       status: 'pass',
       applicable: true,
@@ -200,6 +213,19 @@ function extractComplexityValues(reports: EslintFileReport[]): number[] {
         // Message format: 'Function ... has a complexity of N.'
         const match = m.message.match(/complexity of (\d+)/i)
         if (match) out.push(Number.parseInt(match[1]!, 10))
+      }
+    }
+  }
+  return out
+}
+
+type EslintFatalMessage = EslintMessage & { fatal?: boolean }
+function collectFatalErrors(reports: EslintFileReport[]): string[] {
+  const out: string[] = []
+  for (const f of reports) {
+    for (const m of f.messages as EslintFatalMessage[]) {
+      if (m.fatal) {
+        out.push(`${f.filePath.split('/').pop()}: ${m.message}`)
       }
     }
   }
