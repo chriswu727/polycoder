@@ -10,15 +10,19 @@
 ## Status
 
 - ✅ **Design phase complete.** All design and flow documents are
-  drafted. SPEC, ADRs (1-12), 8 role prompts + shared preamble,
+  drafted. SPEC, ADRs (1-13), 8 role prompts + shared preamble,
   3 implementation specs (providers / tools / orchestrator), this
   build plan, and the project map.
-- ⬜ **Implementation phase not started.** No source code has been
-  written. The `src/`, `core/`, `tools/`, `providers/`, `electron/`,
-  and `data/` directories planned in [`map.md` §5](./map.md#5-code-map-forward-looking--packages-we-will-create)
-  do not yet exist.
+- 🟡 **Implementation phase: Layer A in progress.**
+  - ✅ A.1 Repo scaffolding (pnpm, TS strict, ESLint, Prettier)
+  - ✅ A.2 Vite + React 19 + Tailwind v4 + cn() helper
+  - ✅ A.3 Electron 42 main + preload (sandbox, contextIsolation)
+  - ✅ A.4 vitest + GitHub Actions CI (lint + typecheck + test + build)
+  - ✅ A.5 better-sqlite3 smoke test (CREATE/INSERT/SELECT, WAL, FK)
+- ⬜ Layers B-J pending. See per-layer task lists below.
 
-**Next concrete step**: Phase V0.1, Task A.1 (repository scaffolding).
+**Next concrete step**: Layer B.1 (TypeScript types for Workspace,
+Secret, ProjectMemory, etc.).
 
 ---
 
@@ -37,19 +41,30 @@ secrets and role-model assignments. No benchmarks yet.
 
 ### Layer A — Repo scaffolding (foundational, must be first)
 
-- [ ] **A.1** Initialize TypeScript monorepo structure:
+- [x] **A.1** Initialize TypeScript monorepo structure:
       `package.json`, `tsconfig.json` (strict), `.eslintrc`,
-      `.prettierrc`. Decide: bun vs pnpm vs npm. Recommend **bun**
-      (fast, single binary, native test runner).
-- [ ] **A.2** Set up Vite + React + Tailwind + shadcn/ui scaffold
-      under `src/`. Verify `bun dev` shows a hello-world page.
-- [ ] **A.3** Set up Electron main + preload under `electron/`.
-      Verify `bun electron:dev` opens a window loading the Vite dev
-      server.
-- [ ] **A.4** Set up `bun test` config; write one passing dummy test.
-      Set up CI via GitHub Actions (lint + typecheck + test).
-- [ ] **A.5** Set up SQLite via better-sqlite3 (sync API; works in
-      Electron main). Write a minimal smoke test.
+      `.prettierrc`. Decided: **pnpm** (bun not installed; pnpm
+      already present, mature Electron+React support, China-friendly
+      mirrors). See ADR-013. Done 2026-05-08.
+- [x] **A.2** Set up Vite + React + Tailwind + shadcn/ui scaffold
+      under `src/`. Vite v8 + React 19 + Tailwind v4 + cn() helper
+      installed. `pnpm build:renderer` produces 191KB JS / 6KB CSS.
+      shadcn/ui components added on-demand (Layer H). Done 2026-05-08.
+- [x] **A.3** Set up Electron main + preload under `electron/`.
+      Electron 42, contextIsolation + sandbox enabled, preload
+      exposes `window.polycoder` typed shim. `pnpm build:electron`
+      produces `dist/electron/{main,preload}.js`. `pnpm electron:dev`
+      runs Vite + Electron concurrently via `concurrently`+`wait-on`
+      (runtime launch verified locally). Done 2026-05-08.
+- [x] **A.4** Set up `pnpm test` config (vitest 2.1.9); sanity test
+      in `core/types/sanity.test.ts` passes. GitHub Actions workflow
+      `.github/workflows/ci.yml` runs lint + typecheck + test +
+      builds (renderer + electron) on push/PR to main. `pnpm check`
+      runs the full chain locally. Done 2026-05-08.
+- [x] **A.5** Set up SQLite via better-sqlite3 (v12.9.0; sync API,
+      works in Electron main). Smoke test in `data/sanity.test.ts`
+      covers CREATE/INSERT/SELECT, WAL mode pragma, and FK
+      constraint enforcement. 3 tests pass. Done 2026-05-08.
 
 ### Layer B — Data model + persistence
 

@@ -281,10 +281,11 @@ isn't here, add it.
 
 ## 8. Status
 
-- ✅ **Design phase complete.** SPEC, ADRs, learnings, prompt drafts.
-- ⬜ **Implementation phase.** See [`todo.md`](./todo.md).
+- ✅ **Design phase complete.** SPEC, ADRs (1-13), learnings, prompt drafts, 3 implementation contract specs.
+- 🟡 **Implementation phase: V0.1 Layer A complete.** Repo scaffolding,
+  React/Vite/Tailwind renderer, Electron shell, vitest + CI, SQLite
+  smoke. See [`todo.md`](./todo.md) for current state.
 - Working name `polycoder` is provisional (ADR-006).
-- No production code yet.
 - GitHub repo: [`chriswu727/polycoder`](https://github.com/chriswu727/polycoder)
 
 ---

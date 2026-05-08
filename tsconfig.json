@@ -1,0 +1,55 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": false,
+    "skipLibCheck": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@core/*": ["core/*"],
+      "@providers/*": ["providers/*"],
+      "@tools/*": ["tools/*"],
+      "@data/*": ["data/*"],
+      "@electron/*": ["electron/*"]
+    },
+
+    "types": ["vitest/globals", "node"],
+
+    "noEmit": true
+  },
+  "include": [
+    "src/**/*",
+    "core/**/*",
+    "providers/**/*",
+    "tools/**/*",
+    "data/**/*",
+    "electron/**/*",
+    "vitest.config.ts",
+    "vite.config.ts"
+  ],
+  "exclude": ["node_modules", "dist", "build", "out", "release"]
+}

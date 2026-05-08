@@ -557,3 +557,53 @@ Architect's output should be self-contained.
 - Anti-pattern detection in the orchestrator: if Architect output
   contains phrases matching `/based on (the |)(prior|previous|earlier)/i`,
   flag it for re-prompt.
+
+---
+
+## ADR-013: Use pnpm (not bun) as package manager
+
+- **Date**: 2026-05-08
+- **Status**: Accepted
+- **Resolves**: `todo.md` Open Questions item #2
+
+### Context
+
+`todo.md` Layer A.1 left the package-manager choice open between
+**bun**, **pnpm**, and **npm**, with bun as the soft recommendation
+(fast, single binary, native test runner).
+
+At implementation time:
+
+- bun was **not installed** on the dev machine
+- pnpm was already installed (`/opt/homebrew/bin/pnpm`)
+- node v25.6.1 present
+
+### Decision
+
+Use **pnpm**. Engines pinned to `node >= 20.10.0`, `pnpm >= 9.0.0`.
+Not bun.
+
+### Rationale
+
+1. **Already installed** — zero-install ramp-up.
+2. **Electron + native modules** — pnpm has years of battle-tested
+   support for Electron's native rebuilds (better-sqlite3, keytar)
+   that bun is still maturing on.
+3. **China mirror friendliness** — `.npmrc` with the npmmirror.com
+   registry is a one-liner with pnpm; bun's package mirror story is
+   less documented.
+4. **Test runner** — vitest is more mature than `bun:test` for our
+   use case (mocking, UI, snapshot testing). The "bun's native test
+   runner" advantage didn't apply.
+5. **Workspace handling** — pnpm workspaces are well-tested. We may
+   not need them in V0.1 (single package), but the upgrade path is
+   clean.
+
+### Consequences
+
+- Slightly slower install than bun (still fast in practice — ~3s for
+  ~160 packages on cold cache).
+- One more tool dependency users must have to develop polycoder
+  (mitigated by `packageManager` field in `package.json` — Corepack
+  can auto-install).
+- Decision can be revisited at V1.0 if bun's Electron story matures.
