@@ -32,6 +32,17 @@ import {
   type SetRoleAssignmentRequest,
   type ApplyPresetRequest,
 } from './ipc/workspaceHandlers.js'
+import {
+  handleStartIteration,
+  handleAbortIteration,
+  handleListIterations,
+  handleGetIteration,
+  makeWebContentsForwarder,
+  type StartIterationRequest,
+  type AbortIterationRequest,
+  type ListIterationsRequest,
+  type GetIterationRequest,
+} from './ipc/pipelineHandlers.js'
 import type Database from 'better-sqlite3'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -95,6 +106,68 @@ function setupIpcHandlers(database: Database.Database): void {
   ipcMain.handle(
     IPC_CHANNELS.ROLE_APPLY_PRESET,
     (_e, req: ApplyPresetRequest) => handleApplyPreset(database, req),
+  )
+
+  // Pipeline / iterations.
+  // forwardEvent uses the IpcMainInvokeEvent's sender (the renderer
+  // that initiated the start) so events are routed back to the same
+  // window. Events emitted from non-IPC paths (the abort handler etc.)
+  // fall back to broadcast — see makeWebContentsForwarder usage.
+  ipcMain.handle(
+    IPC_CHANNELS.ITERATION_START,
+    (e, req: StartIterationRequest) =>
+      handleStartIteration(
+        {
+          ...deps,
+          forwardEvent: makeWebContentsForwarder(
+            IPC_CHANNELS.ITERATION_EVENT,
+            e.sender,
+          ),
+        },
+        req,
+      ),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.ITERATION_ABORT,
+    (e, req: AbortIterationRequest) =>
+      handleAbortIteration(
+        {
+          ...deps,
+          forwardEvent: makeWebContentsForwarder(
+            IPC_CHANNELS.ITERATION_EVENT,
+            e.sender,
+          ),
+        },
+        req,
+      ),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.ITERATION_LIST,
+    (e, req: ListIterationsRequest) =>
+      handleListIterations(
+        {
+          ...deps,
+          forwardEvent: makeWebContentsForwarder(
+            IPC_CHANNELS.ITERATION_EVENT,
+            e.sender,
+          ),
+        },
+        req,
+      ),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.ITERATION_GET,
+    (e, req: GetIterationRequest) =>
+      handleGetIteration(
+        {
+          ...deps,
+          forwardEvent: makeWebContentsForwarder(
+            IPC_CHANNELS.ITERATION_EVENT,
+            e.sender,
+          ),
+        },
+        req,
+      ),
   )
 }
 

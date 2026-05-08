@@ -27,6 +27,17 @@ import type {
   ApplyPresetRequest,
   ApplyPresetResponse,
 } from './ipc/workspaceHandlers.js'
+import type {
+  StartIterationRequest,
+  StartIterationResponse,
+  AbortIterationRequest,
+  AbortIterationResponse,
+  ListIterationsRequest,
+  ListIterationsResponse,
+  GetIterationRequest,
+  GetIterationResponse,
+  RendererPipelineEvent,
+} from './ipc/pipelineHandlers.js'
 
 const polycoderAPI = {
   version: '0.0.1',
@@ -52,6 +63,33 @@ const polycoderAPI = {
     },
     applyPreset(req: ApplyPresetRequest): Promise<ApplyPresetResponse> {
       return ipcRenderer.invoke(IPC_CHANNELS.ROLE_APPLY_PRESET, req) as Promise<ApplyPresetResponse>
+    },
+  },
+
+  iteration: {
+    start(req: StartIterationRequest): Promise<StartIterationResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.ITERATION_START, req) as Promise<StartIterationResponse>
+    },
+    abort(req: AbortIterationRequest): Promise<AbortIterationResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.ITERATION_ABORT, req) as Promise<AbortIterationResponse>
+    },
+    list(req: ListIterationsRequest): Promise<ListIterationsResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.ITERATION_LIST, req) as Promise<ListIterationsResponse>
+    },
+    get(req: GetIterationRequest): Promise<GetIterationResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.ITERATION_GET, req) as Promise<GetIterationResponse>
+    },
+    /**
+     * Subscribe to streaming pipeline events. Returns an unsubscribe
+     * function. Events are filtered renderer-side by workspace_id
+     * (the iteration store handles that).
+     */
+    onEvent(callback: (event: RendererPipelineEvent) => void): () => void {
+      const handler = (_e: unknown, event: RendererPipelineEvent) => callback(event)
+      ipcRenderer.on(IPC_CHANNELS.ITERATION_EVENT, handler)
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.ITERATION_EVENT, handler)
+      }
     },
   },
 

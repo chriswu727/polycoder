@@ -13,6 +13,14 @@ export const IPC_CHANNELS = {
   ROLE_SET_ASSIGNMENT: 'polycoder.role.setAssignment',
   ROLE_APPLY_PRESET: 'polycoder.role.applyPreset',
 
+  // Pipeline / iterations
+  ITERATION_START: 'polycoder.iteration.start',
+  ITERATION_ABORT: 'polycoder.iteration.abort',
+  ITERATION_LIST: 'polycoder.iteration.list',
+  ITERATION_GET: 'polycoder.iteration.get',
+  /** Main → renderer push channel for pipeline events. */
+  ITERATION_EVENT: 'polycoder.iteration.event',
+
   // Secrets
   SECRET_ADD: 'polycoder.secret.add',
   SECRET_LIST: 'polycoder.secret.list',

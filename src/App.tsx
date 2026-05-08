@@ -1,15 +1,16 @@
-// Top-level App. V0.1 surfaces only the Settings UI (Secrets + Team
-// Config) since Layer I — the workspace/chat view — isn't built yet.
-//
-// On mount: lists workspaces; if none, shows a small create form;
-// otherwise auto-selects the first workspace.
+// Top-level App. V0.1 surfaces two top-level tabs once a workspace
+// is selected: Workspace (chat) and Settings.
 
 import { useEffect, useState } from 'react'
 import { useWorkspaceStore } from '@/stores/workspace.js'
 import { Settings } from '@/components/settings/Settings.js'
+import { Workspace } from '@/components/workspace/Workspace.js'
+import { Tabs } from '@/components/ui/Tabs.js'
 import { Button } from '@/components/ui/Button.js'
 import { Input } from '@/components/ui/Input.js'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card.js'
+
+type TopTab = 'workspace' | 'settings'
 
 export function App() {
   const workspaces = useWorkspaceStore((s) => s.workspaces)
@@ -17,6 +18,7 @@ export function App() {
   const refreshWorkspaces = useWorkspaceStore((s) => s.refreshWorkspaces)
   const selectWorkspace = useWorkspaceStore((s) => s.selectWorkspace)
   const loading = useWorkspaceStore((s) => s.loading)
+  const [tab, setTab] = useState<TopTab>('workspace')
 
   // Bootstrap on mount.
   useEffect(() => {
@@ -36,11 +38,22 @@ export function App() {
           <div className="flex items-center gap-3">
             <span className="text-lg font-semibold tracking-tight">polycoder</span>
             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-500">
-              v0.1 · settings
+              v0.1
             </span>
           </div>
           {current ? (
-            <span className="text-sm text-slate-600">{current.name}</span>
+            <div className="flex items-center gap-3">
+              <Tabs<TopTab>
+                active={tab}
+                onChange={setTab}
+                items={[
+                  { key: 'workspace', label: 'Workspace' },
+                  { key: 'settings', label: 'Settings' },
+                ]}
+                className="border-b-0"
+              />
+              <span className="text-sm text-slate-600">{current.name}</span>
+            </div>
           ) : null}
         </div>
       </header>
@@ -52,6 +65,8 @@ export function App() {
           <CreateFirstWorkspace />
         ) : !current ? (
           <WorkspacePicker />
+        ) : tab === 'workspace' ? (
+          <Workspace />
         ) : (
           <Settings />
         )}

@@ -13,7 +13,7 @@
   drafted. SPEC, ADRs (1-13), 8 role prompts + shared preamble,
   3 implementation specs (providers / tools / orchestrator), this
   build plan, and the project map.
-- 🟡 **Implementation phase: V0.1 Layers A-H complete.**
+- 🟡 **Implementation phase: V0.1 Layers A-I complete.**
   - ✅ Layer A — Repo scaffolding (5/5)
   - ✅ Layer B — Data model + persistence (6/6)
   - ✅ Layer C — Provider abstraction (11/11)
@@ -21,14 +21,17 @@
   - ✅ Layer E — Tool framework + 10 V0 tools (15/15)
   - ✅ Layer F — Role harness (9/9)
   - ✅ Layer G — Pipeline orchestrator (13/13)
-  - ✅ Layer H — Settings UI (6/6) — Secrets + Team Config
-    + presets + verification independence warning
-  - ⬜ Layers I + J pending. See per-layer task lists below.
-- 🧪 **Test count**: 323 passing + 4 skipped (integration), 38 files.
+  - ✅ Layer H — Settings UI (6/6)
+  - ✅ Layer I — Workspace UI / chat view (8/8) — full
+    interactive end-to-end: prompt → live role progress →
+    Communicator output + traffic light + disagreement cards
+  - ⬜ Layer J pending (end-to-end smoke + packaging).
+- 🧪 **Test count**: 330 passing + 4 skipped (integration), 39 files.
 - 🟢 **CI** green.
 
-**Next concrete step**: Layer I.1 — Chat-like main workspace view
-(prompt input + iteration display).
+**Next concrete step**: Layer J.1 — End-to-end smoke against real
+provider keys (DeepSeek + GLM free) with a real "build a todo app"
+prompt.
 
 ---
 
@@ -468,18 +471,39 @@ Reference: [`SPEC.md` §6.1, §6.2](./SPEC.md#6-ui-surfaces)
 
 Reference: [`SPEC.md` §6.3](./SPEC.md#6-ui-surfaces)
 
-- [ ] **I.1** Chat-like main view layout.
-- [ ] **I.2** Prompt input component.
-- [ ] **I.3** Iteration display: traffic light, summary, what-changed
-      list.
-- [ ] **I.4** L1 transparency: model badges per role, cost summary,
-      duration.
-- [ ] **I.5** Disagreement card component
-      (`src/components/transparency/DisagreementCard.tsx`).
-- [ ] **I.6** What-to-do-next checklist component.
-- [ ] **I.7** File diff viewer (for showing what Coder changed).
-- [ ] **I.8** Live progress display during pipeline run (per-role
-      streaming status: idle → in-progress → done).
+- [x] **I.1** Workspace.tsx layout: unconfigured-roles banner +
+      PromptInput + RolePipelineProgress + IterationResult +
+      IterationHistory. Mounted as the default top-level tab.
+      Done 2026-05-08.
+- [x] **I.2** PromptInput — textarea + submit button (Cmd/Ctrl+Enter
+      shortcut) + abort button while running. Disables while pipeline
+      runs. Done 2026-05-08.
+- [x] **I.3** IterationResult.TrafficLightHeader (green/yellow/red
+      pill + reason) + Communicator's user-facing text card +
+      what-changed list. Done 2026-05-08.
+- [x] **I.4** IterationResult.IterationFooter — total cost,
+      duration, unique model badges. RolePipelineProgress shows
+      per-role model badge + envelope status as events arrive.
+      Done 2026-05-08.
+- [x] **I.5** DisagreementCardView (inline in IterationResult.tsx)
+      — amber card with topic + per-role stance (role + model_label
+      + stance text) + user_action_required + default_if_user_skips.
+      Done 2026-05-08.
+- [x] **I.6** What-to-do-next checklist — priority badge per item
+      (must / recommended / optional) + suggestion text.
+      Done 2026-05-08.
+- [x] **I.7** Files-changed list (compact monospace path list).
+      Full diff viewer deferred; the file list + Coder's
+      content_or_diff per file (visible via L2 transparency in V0.2)
+      is enough for V0.1. Done 2026-05-08.
+- [x] **I.8** Live progress: RolePipelineProgress driven by
+      iteration store reducer. Each role renders an icon + label +
+      model badge + envelope status, updating live as events stream
+      via window.polycoder.iteration.onEvent. Pipeline IPC handlers
+      in `electron/ipc/pipelineHandlers.ts` start runIteration with
+      a webContents-forwarding event bus. Provider factory hydrates
+      role assignments → secrets → buildProvider per call.
+      Done 2026-05-08.
 
 ### Layer J — End-to-end + packaging
 

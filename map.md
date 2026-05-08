@@ -282,14 +282,15 @@ isn't here, add it.
 ## 8. Status
 
 - ✅ **Design phase complete.** SPEC, ADRs (1-13), learnings, prompt drafts, 3 implementation contract specs.
-- 🟡 **Implementation phase: V0.1 Layers A-H complete.**
-  Backend (A-G): repo, data layer, provider abstraction (5 adapters),
-  secret manager, tool framework (10 tools), role harness, pipeline
-  orchestrator. Settings UI (H): Secrets tab + Team Config tab with
-  per-role credential/model dropdowns + 4 preset buttons + ADR-011
-  verification independence warning. End-to-end pipeline verified
-  by integration test; UI builds at 308KB. 323 tests passing.
-  CI green. See [`todo.md`](./todo.md).
+- 🟡 **Implementation phase: V0.1 Layers A-I complete.**
+  Backend + full UI working end-to-end. Prompt input streams to
+  runIteration via IPC; live per-role progress as events arrive
+  from the orchestrator's PipelineEventBus; Communicator output
+  rendered with traffic light + disagreement cards + what-to-do-
+  next checklist + files-changed list + cost/duration footer.
+  Past iterations history. Workspace ↔ Settings tab switch.
+  Renderer 322KB. 330 tests passing. CI green.
+  See [`todo.md`](./todo.md).
 - Working name `polycoder` is provisional (ADR-006).
 - GitHub repo: [`chriswu727/polycoder`](https://github.com/chriswu727/polycoder)
 
