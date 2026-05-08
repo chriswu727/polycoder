@@ -282,13 +282,15 @@ isn't here, add it.
 ## 8. Status
 
 - ✅ **Design phase complete.** SPEC, ADRs (1-13), learnings, prompt drafts, 3 implementation contract specs.
-- 🟡 **Implementation phase: V0.1 Layers A-F complete.**
-  Repo, data layer, provider abstraction (5 adapters), secret
-  manager, tool framework (10 V0 tools), and role harness
-  (8 role defs, prompt assembly, XML envelope builder/parser,
-  per-role Zod payload schemas, runWithTools loop, invokeRole
-  with 6-case re-prompt + Architect synthesis-discipline check).
-  281 tests passing. CI green. See [`todo.md`](./todo.md).
+- 🟡 **Implementation phase: V0.1 Layers A-G complete.**
+  Full backend: repo, data layer, provider abstraction (5 adapters),
+  secret manager, tool framework (10 V0 tools), role harness, and
+  pipeline orchestrator (event bus, cost tracker, 5-rule conflict
+  detection, parallel reviewers, runIteration state machine,
+  trace persistence, Architect-driven memory updates).
+  End-to-end pipeline verified: all 8 roles fire, persist outputs +
+  costs + memory, surface conflicts. 305 tests passing. CI green.
+  See [`todo.md`](./todo.md).
 - Working name `polycoder` is provisional (ADR-006).
 - GitHub repo: [`chriswu727/polycoder`](https://github.com/chriswu727/polycoder)
 

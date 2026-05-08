@@ -13,19 +13,21 @@
   drafted. SPEC, ADRs (1-13), 8 role prompts + shared preamble,
   3 implementation specs (providers / tools / orchestrator), this
   build plan, and the project map.
-- 🟡 **Implementation phase: V0.1 Layers A-F complete.**
+- 🟡 **Implementation phase: V0.1 Layers A-G complete.**
   - ✅ Layer A — Repo scaffolding (5/5)
   - ✅ Layer B — Data model + persistence (6/6)
   - ✅ Layer C — Provider abstraction (11/11)
   - ✅ Layer D — Secret manager (4/4)
   - ✅ Layer E — Tool framework + 10 V0 tools (15/15)
   - ✅ Layer F — Role harness (9/9)
-  - ⬜ Layers G-J pending. See per-layer task lists below.
-- 🧪 **Test count**: 281 passing + 4 skipped (integration), 33 files.
+  - ✅ Layer G — Pipeline orchestrator (13/13) — end-to-end
+    pipeline runs through all 8 roles
+  - ⬜ Layers H-J pending. See per-layer task lists below.
+- 🧪 **Test count**: 305 passing + 4 skipped (integration), 36 files.
 - 🟢 **CI** green.
 
-**Next concrete step**: Layer G.1 — Pipeline event bus
-(`core/orchestrator/events.ts`).
+**Next concrete step**: Layer H.1 — Workspace state Zustand store
+in the renderer (`src/stores/workspace.ts`).
 
 ---
 
@@ -351,31 +353,80 @@ Reference: [`docs/specs/orchestrator.md`](./docs/specs/orchestrator.md) §3
 
 Reference: [`docs/specs/orchestrator.md`](./docs/specs/orchestrator.md)
 
-- [ ] **G.1** Pipeline event bus (`core/orchestrator/events.ts`).
-- [ ] **G.2** `runParallelReviewers`
-      (`core/orchestrator/parallelReviewers.ts`).
-- [ ] **G.3** `detectConflicts` pure function
-      (`core/orchestrator/conflictDetection.ts`).
-- [ ] **G.4** `detectSynthesisDiscipline` regex check
-      (`core/orchestrator/synthesisDiscipline.ts`). Architect-only.
-- [ ] **G.5** `applyMemoryUpdates`
-      (`core/orchestrator/applyMemoryUpdates.ts`). Runs after
-      successful pipeline.
-- [ ] **G.6** `runIteration` top-level
-      (`core/orchestrator/runIteration.ts`). The state machine
-      orchestrating sequential → parallel → sequential phases.
-- [ ] **G.7** Cost tracker (`core/orchestrator/costTracker.ts`).
-- [ ] **G.8** Iteration trace persistence
-      (`core/orchestrator/iterationTrace.ts`).
-- [ ] **G.9** Pipeline error taxonomy
-      (`core/orchestrator/PipelineError.ts`).
-- [ ] **G.10** Abort handling (`core/orchestrator/abort.ts`).
-- [ ] **G.11** Unit tests: detectConflicts (table-driven; many
-      conflict-rule cases).
-- [ ] **G.12** Unit tests: detectSynthesisDiscipline (good + bad
-      strings).
-- [ ] **G.13** Integration test: end-to-end happy path with mocked
-      providers ("build me a todo app" → produces files).
+- [x] **G.1** Pipeline event bus (`core/orchestrator/events.ts`).
+      `PipelineEventBus` with subscribe/emit; isolates listener
+      throws so a buggy subscriber can't break orchestration.
+      3 tests. Done 2026-05-08.
+- [x] **G.2** `runParallelReviewers`
+      (`core/orchestrator/parallelReviewers.ts`). Promise.all over
+      Adversary, Long-term Critic, Test Runner — no fail-fast.
+      Module retained as reusable helper; runIteration runs the
+      trio inline through invokeOne to thread providerFactory +
+      cost tracker. Done 2026-05-08.
+- [x] **G.3** `detectConflicts` pure function
+      (`core/orchestrator/conflictDetection.ts`). 5 rules:
+      adversary_flagged_test_passed, test_failed_coder_ok,
+      architect_overridden_silently, reviewers_disagree_on_severity,
+      critic_warns_coder_proceeds. Stable conflict IDs per iteration.
+      Done 2026-05-08.
+- [x] **G.4** `detectSynthesisDiscipline` regex check
+      (`core/orchestrator/synthesisDiscipline.ts`). Already
+      implemented in F.7 — used by invokeRole's Architect-only
+      retry branch. Done 2026-05-08.
+- [x] **G.5** `applyMemoryUpdates`
+      (`core/orchestrator/applyMemoryUpdates.ts`). Translates
+      Architect's memory_updates payload into MemoryUpdateInput;
+      delegates to data/projectMemory.applyMemoryUpdate (atomic).
+      No-op for missing payload. Done 2026-05-08.
+- [x] **G.6** `runIteration` top-level
+      (`core/orchestrator/runIteration.ts`). State machine:
+      sequential 1-4 (Translator → Designer → Architect → Coder)
+      → parallel 5-7 (Adversary || LTC || TestRunner) →
+      detectConflicts → sequential 8 (Communicator) →
+      applyMemoryUpdates (only on success). Awaiting-user states
+      handled per V0.1: Translator's needs_clarification → use
+      default_assumption (ask_user_question stub fails open);
+      Architect's conflict_detected → abort (no UI to pause yet).
+      Returns PipelineResult with completed/aborted/failed
+      discriminator. Done 2026-05-08.
+- [x] **G.7** Cost tracker (`core/orchestrator/CostTracker.ts`).
+      Class accumulates per-role usage; perRoleTotals /
+      perModelTotals / iterationTotal / iterationDuration /
+      snapshot. 3 tests. Done 2026-05-08.
+- [x] **G.8** Iteration trace persistence
+      (`core/orchestrator/iterationTrace.ts`). startIterationTrace
+      creates the iterations row; finishIterationTrace persists
+      cost rows + updates the iterations row with role outputs +
+      conflicts. Done 2026-05-08.
+- [x] **G.9** Pipeline error taxonomy
+      (`core/orchestrator/PipelineError.ts`). Codes:
+      role_unconfigured, role_invocation_failed, memory_update_failed,
+      workspace_not_found, iteration_already_running, aborted,
+      unknown. Done 2026-05-08.
+- [x] **G.10** Abort handling. Threaded via AbortSignal in
+      RunIterationArgs.abort_signal → ToolContext.abort_signal →
+      provider.chat(_, signal) and runShellCommand(_, signal).
+      No standalone abort.ts module needed for V0.1 — semantics
+      flow through the existing AbortSignal chain. UI-driven
+      pipeline.abort(reason) lands with the workspace UI in
+      Layer I. Done 2026-05-08.
+- [x] **G.11** Unit tests: detectConflicts — 13 table-driven cases
+      in `conflictDetection.test.ts` covering each rule's positive/
+      negative, severity tiers, and combined-scenarios (multiple
+      rules firing). Done 2026-05-08.
+- [x] **G.12** Unit tests: detectSynthesisDiscipline — done in F.7
+      (7 tests in `core/orchestrator/synthesisDiscipline.test.ts`).
+      Done 2026-05-08.
+- [x] **G.13** End-to-end integration test
+      (`core/orchestrator/runIteration.test.ts`). 4 tests:
+      (1) happy path — all 8 roles fire, completed status, traffic
+      light green, files_changed populated, iteration row + 8 cost
+      records persisted, memory updated with Architect's decision,
+      8 role_started + 8 role_completed events emitted.
+      (2) full envelope JSON round-trips through SQLite role_outputs_json.
+      (3) Architect conflict_detected → aborted result.
+      (4) Translator envelope-parse failure → failed result with
+      structured error_code. Done 2026-05-08.
 
 ### Layer H — Settings UI
 
