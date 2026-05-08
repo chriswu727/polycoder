@@ -7,9 +7,26 @@
 // `secrets` table holds metadata (name, provider, available_models)
 // and references the keychain entry by composite account ID.
 //
+// keytar is lazy-loaded inside OsKeystore methods so this module can
+// be imported in environments without libsecret (CI, in-memory tests)
+// without crashing. Only OsKeystore touches keytar; tests use
+// InMemoryKeystore and never trigger the native load.
+//
 // See SPEC.md §8 and ADR-005.
 
-import keytar from 'keytar'
+type Keytar = typeof import('keytar')
+let _keytarPromise: Promise<Keytar> | null = null
+async function loadKeytar(): Promise<Keytar> {
+  if (!_keytarPromise) {
+    // CommonJS package: ESM dynamic import returns the module namespace,
+    // and the `default` export (when present) holds the original CJS
+    // exports. Use whichever shape is provided.
+    _keytarPromise = import('keytar').then(
+      (m: Keytar & { default?: Keytar }) => m.default ?? m,
+    )
+  }
+  return _keytarPromise
+}
 
 /**
  * The service name used in the keychain. All polycoder secrets share
@@ -64,18 +81,22 @@ export class OsKeystore implements KeyStore {
     apiKey: string,
   ): Promise<void> {
     if (!apiKey) throw new Error('Refusing to store empty key')
+    const keytar = await loadKeytar()
     await keytar.setPassword(KEYTAR_SERVICE, accountFor(workspaceId, secretId), apiKey)
   }
 
   async getKey(workspaceId: string, secretId: string): Promise<string | null> {
+    const keytar = await loadKeytar()
     return keytar.getPassword(KEYTAR_SERVICE, accountFor(workspaceId, secretId))
   }
 
   async deleteKey(workspaceId: string, secretId: string): Promise<boolean> {
+    const keytar = await loadKeytar()
     return keytar.deletePassword(KEYTAR_SERVICE, accountFor(workspaceId, secretId))
   }
 
   async listAccounts(): Promise<Array<{ workspace_id: string; secret_id: string }>> {
+    const keytar = await loadKeytar()
     const all = await keytar.findCredentials(KEYTAR_SERVICE)
     return all
       .map((c) => parseAccount(c.account))
