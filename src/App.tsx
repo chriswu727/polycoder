@@ -82,6 +82,25 @@ function CreateFirstWorkspace() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  async function onPickFolder() {
+    setError(null)
+    try {
+      const picker = (window as unknown as {
+        polycoder?: { workspace?: { pickFolder?: (req?: { defaultPath?: string }) => Promise<string | null> } }
+      }).polycoder?.workspace?.pickFolder
+      if (!picker) {
+        setError(
+          'Folder picker unavailable. (window.polycoder.workspace.pickFolder is undefined — are you in a regular browser tab?)',
+        )
+        return
+      }
+      const picked = await picker()
+      if (picked) setRoot(picked)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -103,21 +122,28 @@ function CreateFirstWorkspace() {
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm font-medium">Workspace name</label>
+            <label className="mb-1 block text-sm font-medium">Project name</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium">
-              Workspace root (absolute path)
+              Where to put your project
             </label>
-            <Input
-              value={root}
-              onChange={(e) => setRoot(e.target.value)}
-              placeholder="/Users/you/projects/my-app"
-              required
-            />
+            <div className="flex gap-2">
+              <Input
+                value={root}
+                onChange={(e) => setRoot(e.target.value)}
+                placeholder="Click 'Pick folder…' →"
+                required
+                className="flex-1"
+              />
+              <Button type="button" variant="secondary" onClick={onPickFolder}>
+                Pick folder…
+              </Button>
+            </div>
             <p className="mt-1 text-xs text-slate-500">
-              Where polycoder will read + write code. Must exist on disk.
+              An empty folder on your computer where polycoder will write the
+              code it generates.
             </p>
           </div>
           {error ? (
@@ -125,7 +151,7 @@ function CreateFirstWorkspace() {
               {error}
             </div>
           ) : null}
-          <Button type="submit" disabled={submitting}>
+          <Button type="submit" disabled={submitting || !root}>
             {submitting ? 'Creating…' : 'Create'}
           </Button>
         </form>

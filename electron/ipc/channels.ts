@@ -8,6 +8,8 @@ export const IPC_CHANNELS = {
   WORKSPACE_LIST: 'polycoder.workspace.list',
   WORKSPACE_GET: 'polycoder.workspace.get',
   WORKSPACE_DELETE: 'polycoder.workspace.delete',
+  /** Open a native folder-picker dialog and return the chosen path. */
+  WORKSPACE_PICK_FOLDER: 'polycoder.workspace.pickFolder',
 
   // Roles
   ROLE_SET_ASSIGNMENT: 'polycoder.role.setAssignment',

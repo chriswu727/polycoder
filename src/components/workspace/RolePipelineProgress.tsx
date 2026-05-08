@@ -4,15 +4,18 @@ import { Card, CardContent } from '@/components/ui/Card.js'
 import { Badge } from '@/components/ui/Badge.js'
 import type { RoleType } from '@core/types/role.js'
 
+// Vibe-coder-friendly action verbs. Underlying role IDs unchanged
+// in the orchestrator; this is purely a display layer. Settings →
+// Team still surfaces the technical role names for power users.
 const ROLE_LABELS: Record<RoleType, string> = {
-  translator: 'Translator',
-  designer: 'Designer',
-  architect: 'Architect',
-  coder: 'Coder',
-  adversary: 'Adversary',
-  long_term_critic: 'Long-term Critic',
-  test_runner: 'Test Runner',
-  communicator: 'Communicator',
+  translator: 'Understanding your idea',
+  designer: 'Sketching the layout',
+  architect: 'Planning the structure',
+  coder: 'Writing your app',
+  adversary: 'Double-checking',
+  long_term_critic: 'Reviewing',
+  test_runner: 'Testing',
+  communicator: 'Wrapping up',
 }
 
 const ROLE_ORDER: RoleType[] = [

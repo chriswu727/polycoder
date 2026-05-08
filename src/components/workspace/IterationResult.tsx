@@ -16,16 +16,32 @@ export function IterationResult() {
   if (status === 'idle' || !result) return null
 
   if (status === 'failed') {
+    const stoppedAt =
+      result?.status === 'failed' ? result.stopped_at_role : undefined
+    const friendly = friendlyError(error, stoppedAt)
     return (
       <Card>
         <CardContent className="space-y-2">
           <div className="flex items-center gap-2 text-red-600">
             <XCircle size={20} />
-            <span className="font-semibold">Iteration failed</span>
+            <span className="font-semibold">{friendly.title}</span>
           </div>
-          <div className="text-sm text-slate-700">
-            {error ?? 'unknown failure'}
-          </div>
+          <div className="text-sm text-slate-700">{friendly.body}</div>
+          {friendly.suggestion ? (
+            <div className="rounded-md bg-slate-50 p-2 text-xs text-slate-600">
+              <strong>What you can try:</strong> {friendly.suggestion}
+            </div>
+          ) : null}
+          {friendly.technical ? (
+            <details className="text-xs text-slate-400">
+              <summary className="cursor-pointer hover:text-slate-600">
+                Technical details
+              </summary>
+              <pre className="mt-1 whitespace-pre-wrap break-words font-mono">
+                {friendly.technical}
+              </pre>
+            </details>
+          ) : null}
         </CardContent>
       </Card>
     )
@@ -257,4 +273,83 @@ function uniqueModels(
     if (v?.model) set.add(v.model)
   }
   return [...set]
+}
+
+// Maps technical orchestrator error codes (envelope_parse_exhausted,
+// provider_error, tool_loop_budget_exceeded, etc.) into vibe-coder-
+// friendly explanations. Keeps the raw error text in a collapsed
+// "Technical details" disclosure for power users / bug reports.
+function friendlyError(
+  raw: string | null,
+  stoppedAtRole: string | undefined,
+): { title: string; body: string; suggestion: string | null; technical: string | null } {
+  const text = raw ?? ''
+  const roleLabel = ROLE_FRIENDLY_FOR_ERROR[stoppedAtRole as keyof typeof ROLE_FRIENDLY_FOR_ERROR] ?? stoppedAtRole ?? 'a step'
+
+  if (/envelope_parse_exhausted/.test(text)) {
+    return {
+      title: 'The model gave a confusing answer',
+      body: `Polycoder tried 3 times to get a properly-formatted response from "${roleLabel}", but couldn't parse what came back.`,
+      suggestion: 'Try sending the prompt again, or assign a stronger model to this role under Settings → Team.',
+      technical: text,
+    }
+  }
+  if (/payload_validation_exhausted/.test(text)) {
+    return {
+      title: 'The model’s answer didn’t match what we expected',
+      body: `"${roleLabel}" responded 3 times but each response was missing required fields.`,
+      suggestion: 'Try again, or rephrase your prompt to be more concrete. A stronger model on this role usually helps.',
+      technical: text,
+    }
+  }
+  if (/tool_loop_budget_exceeded/.test(text)) {
+    return {
+      title: 'This task was too complex for one round',
+      body: `"${roleLabel}" needed more steps than allowed.`,
+      suggestion: 'Try breaking your prompt into smaller pieces, or run the same prompt again — sometimes a fresh attempt is more efficient.',
+      technical: text,
+    }
+  }
+  if (/provider_error/.test(text)) {
+    return {
+      title: 'Couldn’t reach the AI provider',
+      body: `Polycoder couldn’t talk to the API for "${roleLabel}".`,
+      suggestion: 'Check your internet, the provider’s status page, and that your API key is still valid in Settings → Secrets.',
+      technical: text,
+    }
+  }
+  if (/aborted/.test(text)) {
+    return {
+      title: 'You stopped this iteration',
+      body: 'No code was changed.',
+      suggestion: null,
+      technical: text,
+    }
+  }
+  if (/role_max_attempts_exceeded/.test(text)) {
+    return {
+      title: 'Too many retries',
+      body: `"${roleLabel}" couldn’t complete after multiple attempts.`,
+      suggestion: 'Try again, or assign a different model to this role under Settings → Team.',
+      technical: text,
+    }
+  }
+  // Fallback: show the raw text but in a friendly wrapper.
+  return {
+    title: 'Iteration failed',
+    body: text || 'unknown failure',
+    suggestion: null,
+    technical: null,
+  }
+}
+
+const ROLE_FRIENDLY_FOR_ERROR: Record<string, string> = {
+  translator: 'Understanding your idea',
+  designer: 'Sketching the layout',
+  architect: 'Planning the structure',
+  coder: 'Writing your app',
+  adversary: 'Double-checking',
+  long_term_critic: 'Reviewing',
+  test_runner: 'Testing',
+  communicator: 'Wrapping up',
 }

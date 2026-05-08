@@ -55,6 +55,9 @@ const polycoderAPI = {
     delete(req: DeleteWorkspaceRequest): Promise<DeleteWorkspaceResponse> {
       return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_DELETE, req) as Promise<DeleteWorkspaceResponse>
     },
+    pickFolder(req?: { defaultPath?: string }): Promise<string | null> {
+      return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_PICK_FOLDER, req) as Promise<string | null>
+    },
   },
 
   roles: {

@@ -2,7 +2,7 @@
 // Creates the app window, wires up IPC handlers, opens the
 // app-private SQLite database, and instantiates the OS keystore.
 
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { mkdirSync } from 'node:fs'
@@ -96,6 +96,19 @@ function setupIpcHandlers(database: Database.Database): void {
   ipcMain.handle(
     IPC_CHANNELS.WORKSPACE_DELETE,
     (_e, req: DeleteWorkspaceRequest) => handleDeleteWorkspace(database, req),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.WORKSPACE_PICK_FOLDER,
+    async (e, req: { defaultPath?: string } | undefined) => {
+      const win = BrowserWindow.fromWebContents(e.sender)
+      const result = await dialog.showOpenDialog(win ?? mainWindow!, {
+        title: 'Pick a workspace folder',
+        properties: ['openDirectory', 'createDirectory'],
+        ...(req?.defaultPath ? { defaultPath: req.defaultPath } : {}),
+      })
+      if (result.canceled || result.filePaths.length === 0) return null
+      return result.filePaths[0]
+    },
   )
 
   // Roles
