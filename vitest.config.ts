@@ -11,6 +11,7 @@ export default defineConfig({
       'tools/**/*.test.ts',
       'data/**/*.test.ts',
       'electron/**/*.test.ts',
+      'src/**/*.test.ts',
     ],
     exclude: ['node_modules', 'dist', 'build'],
     coverage: {

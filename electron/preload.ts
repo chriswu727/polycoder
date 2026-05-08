@@ -1,10 +1,6 @@
 // Electron preload script.
-// Runs in the renderer's isolated world before page scripts. Exposes a
-// minimal, typed API surface to the renderer via contextBridge.
-//
-// Renderer NEVER sees plaintext API keys. addSecret accepts the key
-// (as a transient input from a UI form) but the response only echoes
-// metadata; subsequent reads return metadata only.
+// Exposes a typed API surface to the renderer via contextBridge.
+// Renderer NEVER sees plaintext API keys.
 
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from './ipc/channels.js'
@@ -18,9 +14,46 @@ import type {
   TestSecretRequest,
   TestSecretResponse,
 } from './ipc/secretsHandlers.js'
+import type {
+  CreateWorkspaceRequest,
+  CreateWorkspaceResponse,
+  ListWorkspacesResponse,
+  GetWorkspaceRequest,
+  GetWorkspaceResponse,
+  DeleteWorkspaceRequest,
+  DeleteWorkspaceResponse,
+  SetRoleAssignmentRequest,
+  SetRoleAssignmentResponse,
+  ApplyPresetRequest,
+  ApplyPresetResponse,
+} from './ipc/workspaceHandlers.js'
 
 const polycoderAPI = {
   version: '0.0.1',
+
+  workspace: {
+    create(req: CreateWorkspaceRequest): Promise<CreateWorkspaceResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_CREATE, req) as Promise<CreateWorkspaceResponse>
+    },
+    list(): Promise<ListWorkspacesResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_LIST) as Promise<ListWorkspacesResponse>
+    },
+    get(req: GetWorkspaceRequest): Promise<GetWorkspaceResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_GET, req) as Promise<GetWorkspaceResponse>
+    },
+    delete(req: DeleteWorkspaceRequest): Promise<DeleteWorkspaceResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_DELETE, req) as Promise<DeleteWorkspaceResponse>
+    },
+  },
+
+  roles: {
+    setAssignment(req: SetRoleAssignmentRequest): Promise<SetRoleAssignmentResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.ROLE_SET_ASSIGNMENT, req) as Promise<SetRoleAssignmentResponse>
+    },
+    applyPreset(req: ApplyPresetRequest): Promise<ApplyPresetResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.ROLE_APPLY_PRESET, req) as Promise<ApplyPresetResponse>
+    },
+  },
 
   secrets: {
     add(req: AddSecretRequest): Promise<AddSecretResponse> {

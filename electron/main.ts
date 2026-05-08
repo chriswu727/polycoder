@@ -19,6 +19,19 @@ import {
   type RemoveSecretRequest,
   type TestSecretRequest,
 } from './ipc/secretsHandlers.js'
+import {
+  handleCreateWorkspace,
+  handleListWorkspaces,
+  handleGetWorkspace,
+  handleDeleteWorkspace,
+  handleSetRoleAssignment,
+  handleApplyPreset,
+  type CreateWorkspaceRequest,
+  type GetWorkspaceRequest,
+  type DeleteWorkspaceRequest,
+  type SetRoleAssignmentRequest,
+  type ApplyPresetRequest,
+} from './ipc/workspaceHandlers.js'
 import type Database from 'better-sqlite3'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -55,6 +68,33 @@ function setupIpcHandlers(database: Database.Database): void {
   ipcMain.handle(
     IPC_CHANNELS.SECRET_TEST,
     (_e, req: TestSecretRequest) => handleTestSecret(deps, req),
+  )
+
+  // Workspace
+  ipcMain.handle(
+    IPC_CHANNELS.WORKSPACE_CREATE,
+    (_e, req: CreateWorkspaceRequest) => handleCreateWorkspace(database, req),
+  )
+  ipcMain.handle(IPC_CHANNELS.WORKSPACE_LIST, () =>
+    handleListWorkspaces(database),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.WORKSPACE_GET,
+    (_e, req: GetWorkspaceRequest) => handleGetWorkspace(database, req),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.WORKSPACE_DELETE,
+    (_e, req: DeleteWorkspaceRequest) => handleDeleteWorkspace(database, req),
+  )
+
+  // Roles
+  ipcMain.handle(
+    IPC_CHANNELS.ROLE_SET_ASSIGNMENT,
+    (_e, req: SetRoleAssignmentRequest) => handleSetRoleAssignment(database, req),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.ROLE_APPLY_PRESET,
+    (_e, req: ApplyPresetRequest) => handleApplyPreset(database, req),
   )
 }
 

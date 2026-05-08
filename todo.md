@@ -13,21 +13,22 @@
   drafted. SPEC, ADRs (1-13), 8 role prompts + shared preamble,
   3 implementation specs (providers / tools / orchestrator), this
   build plan, and the project map.
-- 🟡 **Implementation phase: V0.1 Layers A-G complete.**
+- 🟡 **Implementation phase: V0.1 Layers A-H complete.**
   - ✅ Layer A — Repo scaffolding (5/5)
   - ✅ Layer B — Data model + persistence (6/6)
   - ✅ Layer C — Provider abstraction (11/11)
   - ✅ Layer D — Secret manager (4/4)
   - ✅ Layer E — Tool framework + 10 V0 tools (15/15)
   - ✅ Layer F — Role harness (9/9)
-  - ✅ Layer G — Pipeline orchestrator (13/13) — end-to-end
-    pipeline runs through all 8 roles
-  - ⬜ Layers H-J pending. See per-layer task lists below.
-- 🧪 **Test count**: 305 passing + 4 skipped (integration), 36 files.
+  - ✅ Layer G — Pipeline orchestrator (13/13)
+  - ✅ Layer H — Settings UI (6/6) — Secrets + Team Config
+    + presets + verification independence warning
+  - ⬜ Layers I + J pending. See per-layer task lists below.
+- 🧪 **Test count**: 323 passing + 4 skipped (integration), 38 files.
 - 🟢 **CI** green.
 
-**Next concrete step**: Layer H.1 — Workspace state Zustand store
-in the renderer (`src/stores/workspace.ts`).
+**Next concrete step**: Layer I.1 — Chat-like main workspace view
+(prompt input + iteration display).
 
 ---
 
@@ -432,18 +433,36 @@ Reference: [`docs/specs/orchestrator.md`](./docs/specs/orchestrator.md)
 
 Reference: [`SPEC.md` §6.1, §6.2](./SPEC.md#6-ui-surfaces)
 
-- [ ] **H.1** Workspace state (Zustand store) for the renderer.
-- [ ] **H.2** IPC commands: `workspace.create`, `workspace.list`,
-      `workspace.load`.
-- [ ] **H.3** Secrets tab UI (`src/components/settings/SecretsTab.tsx`):
-      list, add, edit, delete, test-connection.
-- [ ] **H.4** Team Configuration tab UI
-      (`src/components/settings/TeamConfigTab.tsx`): table with one
-      row per role, dropdowns for credential and model.
-- [ ] **H.5** Preset application logic + UI button.
-- [ ] **H.6** Verification independence warning UI
-      (per ADR-011: red banner when Coder model = Adversary model
-      or Coder model = Test Runner model).
+- [x] **H.1** Workspace state (Zustand store) — `src/stores/workspace.ts`.
+      Holds workspaces list, current workspace, secrets,
+      role_assignments. Wraps the IPC API; UI components don't talk
+      to window.polycoder directly. Done 2026-05-08.
+- [x] **H.2** Workspace IPC handlers — `electron/ipc/workspaceHandlers.ts`
+      with handlers for create/list/get/delete + setRoleAssignment +
+      applyPreset. PRESET_DEFINITIONS map for budget/china_pro/mixed/
+      custom. Wired in `electron/main.ts`. Preload exposes
+      `window.polycoder.workspace.*` and `window.polycoder.roles.*`.
+      10 tests. Done 2026-05-08.
+- [x] **H.3** Secrets tab UI (`src/components/settings/SecretsTab.tsx`).
+      List with provider badge + status (Untested / Verified /
+      Test failed). Add Secret modal with provider picker + key + base
+      URL. Per-row Test + Delete. Renderer never sees plaintext key.
+      Done 2026-05-08.
+- [x] **H.4** Team Configuration tab UI
+      (`src/components/settings/TeamConfigTab.tsx`). Table with 8
+      rows × {Credential dropdown, Model dropdown}. Model list
+      filtered by selected credential's available_models. Changing
+      credential auto-clears the model. Done 2026-05-08.
+- [x] **H.5** Preset application — Quick Setup buttons (Budget /
+      China Pro / Mixed) call applyPreset which intersects the preset
+      definition with available secrets. Roles whose preferred
+      provider has no key are left unconfigured. 'Custom' preset is
+      a no-op by design. Done 2026-05-08.
+- [x] **H.6** Verification independence warning
+      (`src/lib/verificationIndependence.ts` + Team Config UI banner).
+      Detects Coder = Adversary or Coder = Test Runner (same secret
+      AND same model) per ADR-011. Amber warning surfaces above the
+      table. 7 tests. Done 2026-05-08.
 
 ### Layer I — Workspace UI (main view)
 

@@ -9,6 +9,10 @@ export const IPC_CHANNELS = {
   WORKSPACE_GET: 'polycoder.workspace.get',
   WORKSPACE_DELETE: 'polycoder.workspace.delete',
 
+  // Roles
+  ROLE_SET_ASSIGNMENT: 'polycoder.role.setAssignment',
+  ROLE_APPLY_PRESET: 'polycoder.role.applyPreset',
+
   // Secrets
   SECRET_ADD: 'polycoder.secret.add',
   SECRET_LIST: 'polycoder.secret.list',
