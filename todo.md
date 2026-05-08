@@ -34,8 +34,10 @@
 
 🎉 **V0.1 SHIPPED 2026-05-07.**
 
-**Next concrete step**: V0.2.4 — write the IST runner that drives
-polycoder-full through 15 iterations across the 3 templates.
+**Next concrete step**: V0.2.6 — Lovable baseline runs (manual,
+3 templates × 5 iters using pre-committed prompts). Or V0.2.7 —
+build the metrics automation (BPR/SPR/TCMR/CCD) so we can score
+runs as they come in.
 
 ---
 
@@ -565,11 +567,17 @@ not validation work).
       committed under `benchmarks/ist/prompts/<code>-iter<NN>.md`,
       plus a `README.md` explaining the freeze rule. Wording
       verbatim from IST §4. Done 2026-05-07.
-- [ ] **V0.2.4** IST runner: polycoder-full side. Loops through
-      15 iters across 3 templates, persists role I/O + workspace
-      to `benchmarks/ist/runs/polycoder-full/<template>/`.
-- [ ] **V0.2.5** IST runner: polycoder-coder-only control. Same
-      harness, single role. Resolves IST §12 open question 4.
+- [x] **V0.2.4** IST runner. `scripts/ist-run.ts` drives
+      polycoder-full or polycoder-coder-only through one or more
+      (template, iter) cells. Per-template SQLite + workspace
+      isolation. Resume model: pass `--force` to re-run a cell.
+      Cost cap $30 enforced. Dry-run support. `pnpm ist-run`
+      script registered. Done 2026-05-07.
+- [x] **V0.2.5** Coder-only control orchestration in
+      `benchmarks/ist/runners/coderOnly.ts` + 5 unit tests
+      against mock provider. ADR-016 resolves IST §12 Q4: no
+      Architect ever (cleanest contrast with polycoder-full).
+      Done 2026-05-07.
 - [ ] **V0.2.6** IST runner: Lovable baseline. Manual operation
       with pre-committed prompts; transcripts + zip exports
       saved per iter.

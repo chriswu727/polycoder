@@ -41,6 +41,13 @@ secrets.json
 *.sqlite3
 *.db
 
+# IST runner output (workspaces, snapshots, dbs, per-iter results)
+# — kept out of git because they're large and reproducible from
+# the prompts under benchmarks/ist/prompts/. The processed
+# benchmark artifacts (results JSON, charts) live under
+# benchmarks/ist/results/ and DO get committed.
+benchmarks/ist/runs/
+
 # Coverage / cache
 .coverage
 .pytest_cache/

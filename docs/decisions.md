@@ -716,3 +716,53 @@ Pin Electron to `^34.0.0`. Don't upgrade further until either:
 - `node:sqlite` (built-in to Node 22+) is a future migration path
   that would eliminate the native-module rebuild dance entirely.
   Considered for V1.0.
+
+---
+
+## ADR-016: IST coder-only control runs Coder every iter, no Architect ever
+
+**Date**: 2026-05-07
+**Status**: Accepted
+**Resolves**: open question 4 from
+  [`specs/iteration-survival-test.md`](./specs/iteration-survival-test.md) §12
+
+### Context
+
+The IST `polycoder-coder-only` system is an internal control: same
+model as `polycoder-full`'s Coder role, different orchestration.
+Two designs were on the table:
+
+- **A. No Architect ever.** Coder runs alone every iter, with the
+  raw user prompt. No upstream Translator/Designer/Architect, no
+  downstream reviewers.
+- **B. Architect on iter 1, Coder-only on iters 2-5.** A
+  one-time architectural framing, then per-iter is Coder-only.
+
+### Decision
+
+Adopt **A — no Architect ever**.
+
+### Rationale
+
+- A is the cleanest, strongest contrast with `polycoder-full`. If
+  full beats A, the headline finding is unambiguous: "the
+  multi-role pipeline (whatever combination of memory framing,
+  per-iter review, and team composition) provides the
+  contribution."
+- B introduces a 4-way comparison with extra confounds (was it
+  the iter-1 framing or the per-iter pipeline that mattered?). A
+  3-way is enough for V0.2's signal-to-effort budget.
+- The IST is a portfolio artifact, not a paper. Cleaner narrative
+  > more granular ablation.
+- If the V0.2 results show A losing, B becomes the natural
+  follow-up experiment. We can leave it for V0.2-stretch or V0.3.
+
+### Consequences
+
+- `benchmarks/ist/runners/coderOnly.ts` calls `invokeRole(Coder)`
+  directly with the user prompt as the input envelope.
+- No project-memory write-back happens for the coder-only system
+  (Architect's `memory_updates` are the only mechanism that writes
+  memory; coder-only never invokes Architect).
+- Coder cost is roughly 1/8 of polycoder-full's cost. Total
+  coder-only IST cost estimate: ~$1 USD across 15 iters.

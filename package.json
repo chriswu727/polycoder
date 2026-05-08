@@ -25,6 +25,7 @@
     "electron:dev": "concurrently -k -n vite,electron -c blue,green \"pnpm dev\" \"wait-on tcp:5173 && pnpm build:electron && electron dist/electron/main.js\"",
     "electron:build": "pnpm build:electron && pnpm build:renderer",
     "smoke": "tsx scripts/smoke.ts",
+    "ist-run": "tsx scripts/ist-run.ts",
     "dist:mac": "pnpm electron:build && electron-builder --mac --publish never",
     "dist:dir": "pnpm electron:build && electron-builder --mac --dir --publish never",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test"
