@@ -13,15 +13,16 @@
   drafted. SPEC, ADRs (1-13), 8 role prompts + shared preamble,
   3 implementation specs (providers / tools / orchestrator), this
   build plan, and the project map.
-- 🟡 **Implementation phase: V0.1 Layers A + B complete.**
+- 🟡 **Implementation phase: V0.1 Layers A + B + C complete.**
   - ✅ Layer A — Repo scaffolding (5/5)
   - ✅ Layer B — Data model + persistence (6/6)
-  - ⬜ Layers C-J pending. See per-layer task lists below.
-- 🧪 **Test count**: 74 passing across 8 test files.
+  - ✅ Layer C — Provider abstraction (11/11)
+  - ⬜ Layers D-J pending. See per-layer task lists below.
+- 🧪 **Test count**: 127 passing + 4 skipped (integration), 16 files.
 
-**Next concrete step**: Layer C.1 — define `ModelProvider` interface
-(types only, no implementation) per
-[`docs/specs/providers.md`](./docs/specs/providers.md) §2.
+**Next concrete step**: Layer D.1 — Electron secure storage
+abstraction (OS keychain integration via `keytar` or
+`@napi-rs/keyring`).
 
 ---
 
@@ -118,30 +119,62 @@ Reference: [`SPEC.md` §5](./SPEC.md#5-data-model)
 
 Reference: [`docs/specs/providers.md`](./docs/specs/providers.md)
 
-- [ ] **C.1** Define `ModelProvider` interface + types
-      (`providers/ModelProvider.ts`).
-- [ ] **C.2** Define `ProviderError` taxonomy
-      (`providers/ProviderError.ts`).
-- [ ] **C.3** Implement `OpenAICompatProvider`
-      (`providers/OpenAICompatProvider.ts`). Used as base for many
-      others; should ship before they do.
-- [ ] **C.4** Implement `DeepSeekProvider` (extends OpenAI-compat
-      with provider-specific quirks). Includes
-      `prompt_cache_hit_tokens` mapping.
-- [ ] **C.5** Implement `QwenProvider` (DashScope OpenAI-compat
-      endpoint). Includes Qwen-VL-Max support for Designer.
-- [ ] **C.6** Implement `GLMProvider` (Zhipu open.bigmodel.cn).
-      Includes free-tier rate limit handling.
-- [ ] **C.7** Implement `AnthropicProvider` (native API). Most
-      divergent — separate system prompt path, cache markers, tool
-      schema conversion.
-- [ ] **C.8** `prepareSystemPrompt` shared helper for handling the
-      `___POLYCODER_PROMPT_BOUNDARY___` marker per provider.
-- [ ] **C.9** Provider registry (`providers/registry.ts`).
-- [ ] **C.10** Unit tests for each adapter (mocked SSE → expected
-      stream events; mocked errors → expected ProviderErrorCodes).
-- [ ] **C.11** Integration test scaffold (gated by env vars; opt-in
-      with real API keys).
+- [x] **C.1** Define `ModelProvider` interface + types
+      (`providers/ModelProvider.ts`). Includes ChatRequest /
+      ChatResponse / StreamEvent / ToolSchema / TestConnectionResult
+      / ModelInfo. Done 2026-05-08.
+- [x] **C.2** Define `ProviderError` taxonomy
+      (`providers/errors.ts`). + `classifyHttpStatus` helper. Plus
+      `httpClient.ts` (fetch wrapper with composable abort + timeout)
+      and `sseParser.ts` (SSE parser handling OpenAI + Anthropic
+      formats, multi-chunk reads, comments, multi-line data).
+      14 tests pass. Done 2026-05-08.
+- [x] **C.3** Implement `OpenAICompatProvider`
+      (`providers/OpenAICompatProvider.ts`). Full chat (non-stream)
+      + stream paths. Tool-call argument assembly across deltas
+      (handles `index` field and incremental JSON args). Cost
+      computation with cached-token tier. fetchImpl injection for
+      tests. 10 tests pass. Done 2026-05-08.
+- [x] **C.4** Implement `DeepSeekProvider`. Hardcoded catalog
+      (deepseek-chat, deepseek-coder, deepseek-reasoner) with cached-
+      input pricing. listModels returns catalog directly (no
+      /v1/models call). Done 2026-05-08.
+- [x] **C.5** Implement `QwenProvider`. DashScope `compatible-mode`
+      endpoint. enable_search:false injected into every request body
+      (verified by test). Catalog includes Qwen-VL-Max for vision.
+      Done 2026-05-08.
+- [x] **C.6** Implement `GLMProvider`. open.bigmodel.cn base URL.
+      Catalog includes glm-4-flash with 0 cost (free tier eligible).
+      Free-tier rate-limit handling deferred to runtime backoff
+      (handled by general 429 retry). Done 2026-05-08.
+- [x] **C.7** Implement `AnthropicProvider` (native /v1/messages).
+      Separate path: system prompt extracted to top-level field;
+      x-api-key + anthropic-version headers (not Authorization
+      Bearer); tool schema as `{ name, description, input_schema }`;
+      tool message → user-role with tool_result content block;
+      stream parses event:type SSE format with content_block_start /
+      delta / stop events; cache_read + cache_creation tokens
+      summed into cached_input_tokens. 7 tests pass. Done 2026-05-08.
+- [x] **C.8** `prepareSystemPrompt` shared helper. `prepareForOpenAICompat`
+      strips marker; `prepareForAnthropic` splits into 2 blocks with
+      cache_control:ephemeral on the first. Handles edge cases (no
+      marker → single block; empty half → elided). 5 tests pass.
+      Done 2026-05-08.
+- [x] **C.9** Provider registry (`providers/registry.ts`).
+      `buildProvider(secret, opts)` dispatches on `secret.provider`,
+      threads optional `fetchImpl` through, requires `base_url` for
+      openai-compat. Exhaustiveness check via `never` for unknown
+      provider id. 7 tests pass. Done 2026-05-08.
+- [x] **C.10** Unit tests for each adapter — shipped alongside each
+      adapter implementation:
+      `OpenAICompatProvider.test.ts` (10), `domesticAdapters.test.ts`
+      (8), `AnthropicProvider.test.ts` (7), `errors.test.ts` (7),
+      `sseParser.test.ts` (7), `prepareSystemPrompt.test.ts` (5),
+      `registry.test.ts` (7). Done 2026-05-08.
+- [x] **C.11** Integration test scaffold (`providers/integration.test.ts`).
+      Gated by `POLYCODER_INT_TEST_{DEEPSEEK,QWEN,GLM,ANTHROPIC}_KEY`
+      env vars via `describe.runIf`. 4 skip-by-default suites. CI
+      never runs them. Done 2026-05-08.
 
 ### Layer D — Secret manager
 
