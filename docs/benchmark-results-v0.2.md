@@ -128,8 +128,47 @@ iter 5? Cite trace.}}
 
 ### 3.3 polycoder-coder-only / landing / iter 4 + iter 5 — text-fragment regressions
 
-{{Specifically which iter 3 fragments disappeared from iter 4's
-DOM? Which iter 4 fragments disappeared from iter 5's DOM?}}
+Captured by SPR's persistence check
+(`benchmarks/ist/metrics/polycoder-coder-only/landing/iter04.json`,
+`iter05.json`):
+
+**iter 4** (FAQ accordion prompt) lost iter 3's footer fragments:
+
+```
+missing_text_fragments: ["Privacy", "Terms"]
+```
+
+The iter-3 build had a footer with Privacy + Terms links; the
+iter-4 build's FAQ rendered correctly but the footer was
+restructured and the two link labels disappeared.
+
+**iter 5** (request-demo form prompt) is the more striking case
+— iter 5 lost the *entire FAQ section* it had built in iter 4:
+
+```
+missing_text_fragments:
+  - "Frequently Asked Questions"
+  - "How is Polycoder different from Cursor or Bolt?"
+  - "Which models power each role?"
+  - "Do I need to know how to code to use Polycoder?"
+  - "What kind of apps can Polycoder build?"
+```
+
+The iter-5 prompt asked for a "Request a demo" form section. In
+implementing the form, the single Coder role rewrote the page
+in a way that dropped the FAQ section just built one iter ago.
+Interactive element count went from 21 → 27 (more inputs from the
+form), so the page got *bigger*, but lost a previously-completed
+feature.
+
+**Why this matters for the polycoder thesis**: this is the
+canonical failure mode that motivated polycoder's Adversary +
+Long-term Critic roles. Adversary on iter 5's diff vs iter 4
+should flag *"the FAQ section was deleted while implementing the
+demo form"* — that's exactly its job. Whether polycoder-full's
+Adversary actually flagged it on the same prompt is the test:
+{{cite polycoder-full/landing/iter05 trace, look for
+disagreement_cards mentioning FAQ regression}}.
 
 ### 3.4 polycoder-full / {{...}} — {{any failures the headline catches}}
 
@@ -308,6 +347,22 @@ paper would accept. Specifically:
   if preserved). Threat: if the post-outage run hits a *different*
   DeepSeek model snapshot than todo's run hit, intra-system
   comparability is weaker than ideal.
+- **Run-level vs metric-level disagreement on failed iters**: when
+  an iter fails at orchestration (e.g. `payload_validation_exhausted`
+  at Designer in polycoder-full/todo/iter02), the IST runner
+  records a `failed` status in `iter02.json` but the workspace
+  snapshot inherits iter (N-1)'s state because the failed role
+  never wrote any files. The metrics pipeline then evaluates
+  iter02's snapshot — which is iter01's content — and reports
+  BPR=pass / SPR=pass. Both readings are technically correct;
+  they answer different questions ("did the orchestration
+  complete?" vs "is the code at end-of-iter buildable?"). The
+  aggregator currently reports the metric-level number; the
+  writeup highlights the run-level failures separately. Future
+  work: have the aggregator load both `metrics/.../iter*.json`
+  and `runs/.../iter*.json` and surface the disagreement
+  explicitly (an iter that's metric-pass + run-fail is a real
+  signal — the user got "no progress" for that prompt).
 - **Tool-call budget retroactively tightened mid-V0.2.9** (ADR-017
   if formalized): after observing polycoder-full/todo/iter04's
   Adversary on GLM-4-plus burning 487K input tokens / $3.42
