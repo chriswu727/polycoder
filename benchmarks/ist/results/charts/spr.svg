@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 380" width="700" height="380" font-family="system-ui, -apple-system, Arial, sans-serif" font-size="12">
+<rect width="700" height="380" fill="white"/>
+<text x="350" y="22" text-anchor="middle" font-size="15" font-weight="600">Smoke Pass Rate by template</text>
+<line x1="60" y1="40" x2="60" y2="310" stroke="#444"/>
+<line x1="60" y1="310" x2="550" y2="310" stroke="#444"/>
+<line x1="60" y1="310" x2="550" y2="310" stroke="#eee"/>
+<text x="54" y="314" text-anchor="end" fill="#444">0.00</text>
+<line x1="60" y1="258.57142857142856" x2="550" y2="258.57142857142856" stroke="#eee"/>
+<text x="54" y="262.57142857142856" text-anchor="end" fill="#444">0.20</text>
+<line x1="60" y1="207.14285714285717" x2="550" y2="207.14285714285717" stroke="#eee"/>
+<text x="54" y="211.14285714285717" text-anchor="end" fill="#444">0.40</text>
+<line x1="60" y1="155.71428571428572" x2="550" y2="155.71428571428572" stroke="#eee"/>
+<text x="54" y="159.71428571428572" text-anchor="end" fill="#444">0.60</text>
+<line x1="60" y1="104.2857142857143" x2="550" y2="104.2857142857143" stroke="#eee"/>
+<text x="54" y="108.2857142857143" text-anchor="end" fill="#444">0.80</text>
+<line x1="60" y1="52.85714285714289" x2="550" y2="52.85714285714289" stroke="#eee"/>
+<text x="54" y="56.85714285714289" text-anchor="end" fill="#444">1.00</text>
+<rect x="80.42" y="52.86" width="37.57" height="257.14" fill="#2c7be5"/>
+<text x="100.83" y="49.86" text-anchor="middle" fill="#222" font-size="10">100%</text>
+<rect x="121.25" y="104.29" width="37.57" height="205.71" fill="#e84a5f"/>
+<text x="141.67" y="101.29" text-anchor="middle" fill="#222" font-size="10">80%</text>
+<rect x="162.08" y="310.00" width="37.57" height="0.00" fill="#3aa17e"/>
+<text x="141.67" y="332" text-anchor="middle" fill="#222">todo</text>
+<rect x="243.75" y="155.71" width="37.57" height="154.29" fill="#2c7be5"/>
+<text x="264.17" y="152.71" text-anchor="middle" fill="#222" font-size="10">60%</text>
+<rect x="284.58" y="104.29" width="37.57" height="205.71" fill="#e84a5f"/>
+<text x="305.00" y="101.29" text-anchor="middle" fill="#222" font-size="10">80%</text>
+<rect x="325.42" y="310.00" width="37.57" height="0.00" fill="#3aa17e"/>
+<text x="305.00" y="332" text-anchor="middle" fill="#222">dashboard</text>
+<rect x="407.08" y="155.71" width="37.57" height="154.29" fill="#2c7be5"/>
+<text x="427.50" y="152.71" text-anchor="middle" fill="#222" font-size="10">60%</text>
+<rect x="447.92" y="155.71" width="37.57" height="154.29" fill="#e84a5f"/>
+<text x="468.33" y="152.71" text-anchor="middle" fill="#222" font-size="10">60%</text>
+<rect x="488.75" y="310.00" width="37.57" height="0.00" fill="#3aa17e"/>
+<text x="468.33" y="332" text-anchor="middle" fill="#222">landing</text>
+<rect x="562" y="41" width="12" height="12" fill="#2c7be5"/>
+<text x="580" y="50" fill="#222">polycoder-full</text>
+<rect x="562" y="59" width="12" height="12" fill="#e84a5f"/>
+<text x="580" y="68" fill="#222">polycoder-coder-only</text>
+<rect x="562" y="77" width="12" height="12" fill="#3aa17e"/>
+<text x="580" y="86" fill="#222">lovable</text>
+<text x="305" y="364" text-anchor="middle" fill="#222">template</text>
+<text x="20" y="175" text-anchor="middle" fill="#222" transform="rotate(-90, 20, 175)">pass rate</text>
+</svg>

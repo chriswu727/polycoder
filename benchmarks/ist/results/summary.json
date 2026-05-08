@@ -1,0 +1,213 @@
+{
+  "generated_at": "2026-05-08T18:39:38.120Z",
+  "systems_in_scope": [
+    "polycoder-full",
+    "polycoder-coder-only",
+    "lovable"
+  ],
+  "templates_in_scope": [
+    "todo",
+    "dashboard",
+    "landing"
+  ],
+  "cells": [
+    {
+      "system": "polycoder-full",
+      "template": "todo",
+      "iters_present": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "bpr_pass_rate": 1,
+      "spr_pass_rate": 1,
+      "tcmr_pass_rate": null,
+      "break_count": 0,
+      "longest_break_run": 0,
+      "ccd_mean_iter1": 1,
+      "ccd_mean_iter5": 1,
+      "ccd_drift_iter5": 0
+    },
+    {
+      "system": "polycoder-full",
+      "template": "dashboard",
+      "iters_present": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "bpr_pass_rate": 1,
+      "spr_pass_rate": 0.6,
+      "tcmr_pass_rate": null,
+      "break_count": 2,
+      "longest_break_run": 2,
+      "ccd_mean_iter1": 0,
+      "ccd_mean_iter5": 1.09,
+      "ccd_drift_iter5": 1.09
+    },
+    {
+      "system": "polycoder-full",
+      "template": "landing",
+      "iters_present": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "bpr_pass_rate": 1,
+      "spr_pass_rate": 0.6,
+      "tcmr_pass_rate": null,
+      "break_count": 2,
+      "longest_break_run": 2,
+      "ccd_mean_iter1": 1.05,
+      "ccd_mean_iter5": 1.05,
+      "ccd_drift_iter5": 0
+    },
+    {
+      "system": "polycoder-coder-only",
+      "template": "todo",
+      "iters_present": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "bpr_pass_rate": 1,
+      "spr_pass_rate": 0.8,
+      "tcmr_pass_rate": null,
+      "break_count": 1,
+      "longest_break_run": 1,
+      "ccd_mean_iter1": 1.67,
+      "ccd_mean_iter5": null,
+      "ccd_drift_iter5": null
+    },
+    {
+      "system": "polycoder-coder-only",
+      "template": "dashboard",
+      "iters_present": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "bpr_pass_rate": 1,
+      "spr_pass_rate": 0.8,
+      "tcmr_pass_rate": null,
+      "break_count": 1,
+      "longest_break_run": 1,
+      "ccd_mean_iter1": 2,
+      "ccd_mean_iter5": 2.28,
+      "ccd_drift_iter5": 0.28
+    },
+    {
+      "system": "polycoder-coder-only",
+      "template": "landing",
+      "iters_present": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "bpr_pass_rate": 1,
+      "spr_pass_rate": 0.6,
+      "tcmr_pass_rate": null,
+      "break_count": 2,
+      "longest_break_run": 2,
+      "ccd_mean_iter1": null,
+      "ccd_mean_iter5": null,
+      "ccd_drift_iter5": null
+    },
+    {
+      "system": "lovable",
+      "template": "todo",
+      "iters_present": [],
+      "bpr_pass_rate": null,
+      "spr_pass_rate": null,
+      "tcmr_pass_rate": null,
+      "break_count": 0,
+      "longest_break_run": 0,
+      "ccd_mean_iter1": null,
+      "ccd_mean_iter5": null,
+      "ccd_drift_iter5": null
+    },
+    {
+      "system": "lovable",
+      "template": "dashboard",
+      "iters_present": [],
+      "bpr_pass_rate": null,
+      "spr_pass_rate": null,
+      "tcmr_pass_rate": null,
+      "break_count": 0,
+      "longest_break_run": 0,
+      "ccd_mean_iter1": null,
+      "ccd_mean_iter5": null,
+      "ccd_drift_iter5": null
+    },
+    {
+      "system": "lovable",
+      "template": "landing",
+      "iters_present": [],
+      "bpr_pass_rate": null,
+      "spr_pass_rate": null,
+      "tcmr_pass_rate": null,
+      "break_count": 0,
+      "longest_break_run": 0,
+      "ccd_mean_iter1": null,
+      "ccd_mean_iter5": null,
+      "ccd_drift_iter5": null
+    }
+  ],
+  "systems": [
+    {
+      "system": "polycoder-full",
+      "templates_with_data": [
+        "todo",
+        "dashboard",
+        "landing"
+      ],
+      "bpr_pass_rate": 1,
+      "spr_pass_rate": 0.733,
+      "tcmr_pass_rate": null,
+      "total_breaks": 4,
+      "total_iters": 15,
+      "ccd_drift_mean_at_iter5": 0.363
+    },
+    {
+      "system": "polycoder-coder-only",
+      "templates_with_data": [
+        "todo",
+        "dashboard",
+        "landing"
+      ],
+      "bpr_pass_rate": 1,
+      "spr_pass_rate": 0.733,
+      "tcmr_pass_rate": null,
+      "total_breaks": 4,
+      "total_iters": 15,
+      "ccd_drift_mean_at_iter5": 0.28
+    },
+    {
+      "system": "lovable",
+      "templates_with_data": [],
+      "bpr_pass_rate": null,
+      "spr_pass_rate": null,
+      "tcmr_pass_rate": null,
+      "total_breaks": 0,
+      "total_iters": 0,
+      "ccd_drift_mean_at_iter5": null
+    }
+  ],
+  "warnings": [
+    "no metrics for lovable/todo",
+    "no metrics for lovable/dashboard",
+    "no metrics for lovable/landing"
+  ]
+}

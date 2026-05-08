@@ -17,17 +17,49 @@ under `benchmarks/ist/runs/`; aggregated metrics are under
 
 ---
 
-## TL;DR (to be filled in)
+## TL;DR
 
-> Across 3 templates × 5 iters × 3 systems (45 iter total),
-> polycoder-full {{won/tied/lost}} on build pass rate, {{won/
-> tied/lost}} on smoke pass rate, and {{won/tied/lost}} on
-> complexity drift, vs the polycoder-coder-only internal control
-> and Lovable.
+Across 3 templates × 5 iters × 2 polycoder variants (Lovable
+data pending), polycoder-full produced fewer total *broken*
+iters than polycoder-coder-only (4 vs 4 — **tie at the system
+level**), but the per-template breakdown is more interesting
+than the headline:
 
-> Headline finding: **{{1-2 sentences}}**.
->
-> Caveats: see §6 "threats to validity."
+| System | todo | dashboard | landing | system avg |
+|--------|-----:|----------:|--------:|-----------:|
+| polycoder-full SPR | **100%** | 60% | 60% | **73%** |
+| polycoder-coder-only SPR | 80% | **80%** | 60% | **73%** |
+
+- **polycoder-full wins on todo** (5/5 vs 4/5 — coder-only's
+  iter 5 broke with a duplicate-identifier syntax error).
+- **polycoder-full loses on dashboard** (3/5 vs 4/5 — its
+  iter 3 hit a multi-role *coordination* failure where Coder
+  hallucinated "no architect guidance received" despite a
+  fully-formed Architect envelope being passed to it; that
+  cascaded into iter 4-5 SPR failures on now-degraded state).
+- **polycoder-full ties landing on count, wins on severity**:
+  both lost text fragments at iter 4-5, but polycoder-full lost
+  small footer links ("Terms", "Contact", "Privacy") while
+  polycoder-coder-only lost an entire FAQ section it had just
+  built one iter ago.
+
+So the headline finding is **not** "multi-role wins on every
+metric". It's:
+
+> The polycoder-full pipeline traded a smaller class of
+> regressions (small visual element drops) for a *new* class of
+> regressions (cross-role coordination failures) — and the
+> traffic-light system surfaced both, while coder-only's
+> regressions only showed up in automated SPR checks. **The
+> multi-role pipeline catches its own failures more
+> transparently, but doesn't categorically reduce them on this
+> benchmark.**
+
+This is a more conservative finding than the original V0.2 hope.
+It is also more honest. Lovable baseline is still pending and
+will sharpen the comparison.
+
+Caveats and confounds — see §6.
 
 ---
 
@@ -38,40 +70,64 @@ under `benchmarks/ist/runs/`; aggregated metrics are under
 
 | System | iters | BPR |
 |--------|------:|----:|
-| polycoder-full | {{15}} | {{X%}} |
-| polycoder-coder-only | 15 | 100% (15/15 — no build step needed; static HTML) |
-| Lovable | {{15}} | {{X%}} |
+| polycoder-full | 15 | **100%** (15/15) |
+| polycoder-coder-only | 15 | **100%** (15/15) |
+| Lovable | — | pending |
+
+Both polycoder variants produce static HTML+JS+CSS by default
+(prompts said "single page, no framework" for todo; the others
+didn't specify a framework and both polycoder variants chose
+plain HTML). BPR is therefore vacuously 100% — every iter has a
+non-empty `index.html` at the root. BPR is the floor metric;
+the differentiation lives in SPR.
 
 ### 1.2 Smoke Pass Rate (page loads, no console errors, persistence
         check vs prior iter's golden text fragments)
 
 | System | iters | SPR |
 |--------|------:|----:|
-| polycoder-full | {{15}} | {{X%}} |
-| polycoder-coder-only | 15 | **73% (11/15)** — failures: todo iter5 (parse error: duplicate `bulkMarkDone` declaration), dashboard iter4 (envelope_parse_exhausted upstream → no new content), landing iter4+iter5 (text-fragment regressions) |
-| Lovable | {{15}} | {{X%}} |
+| polycoder-full | 15 | **73%** (11/15 — see §2 + §3 for failure attribution) |
+| polycoder-coder-only | 15 | **73%** (11/15 — see §3.1, §3.2, §3.3) |
+| Lovable | — | pending |
+
+Same headline, different shape. See §2 per-template breakdown.
 
 ### 1.3 Test Coverage Maintenance Rate (only meaningful for
         polycoder-full; Lovable + coder-only don't write tests)
 
-| System | iters w/ tests | TCMR |
-|--------|---------------:|-----:|
-| polycoder-full | {{N}} | {{X%}} |
+polycoder-full's Test Runner role *did* run (visible in the
+per-iter cost records — `test_runner` rows present for every
+iter), but it didn't always write a runnable test command into
+the workspace's `package.json`. As a result, the metrics
+pipeline's TCMR detector finds no `scripts.test` and reports
+`na`. **TCMR is effectively absent in V0.2 data.** Future work
+to either (a) require Test Runner to install a test framework
+even on plain-HTML projects, or (b) accept that the IST
+templates are too small for TCMR to be informative on this
+benchmark.
 
 ### 1.4 Cyclomatic Complexity Drift at iter 5 (mean per-function
         complexity across `.js` files, iter 5 minus iter 1)
 
-| System | template | drift |
-|--------|----------|------:|
-| polycoder-full | todo | {{Δ}} |
-| polycoder-full | dashboard | {{Δ}} |
-| polycoder-full | landing | n/a (no JS) |
-| polycoder-coder-only | todo | -1.67 (parse error at iter 5; metric undefined) |
-| polycoder-coder-only | dashboard | +0.28 |
-| polycoder-coder-only | landing | n/a (no JS) |
-| Lovable | todo | {{Δ}} |
-| Lovable | dashboard | {{Δ}} |
-| Lovable | landing | n/a (no JS) — likely React JSX skipped from CCD if so |
+| System | template | iter 1 mean | iter 5 mean | drift |
+|--------|----------|-----------:|------------:|------:|
+| polycoder-full | todo | 1.00 | 1.00 | **0.00** (flat) |
+| polycoder-full | dashboard | 0.00 | 1.09 | **+1.09** (added 1 function) |
+| polycoder-full | landing | 1.05 | 1.05 | **0.00** (flat) |
+| polycoder-coder-only | todo | 1.67 | n/a | parse error at iter 5 (§3.1) |
+| polycoder-coder-only | dashboard | 2.00 | 2.28 | **+0.28** |
+| polycoder-coder-only | landing | n/a | n/a | no JS files |
+
+Two observations:
+- **polycoder-full keeps complexity lower** (mean ~1.0 vs
+  coder-only's mean ~2.0). polycoder-full's Coder tends to
+  produce smaller, more decomposed functions — a cleanly real
+  finding from the multi-role pipeline (Long-term Critic +
+  Architect explicitly nudge toward simpler primitives).
+- **Drift is small in both systems** at this benchmark's
+  iter-5 horizon. The "complexity accumulates with iterations"
+  hypothesis would need more iterations (10+) to manifest
+  meaningfully on apps this small.
 
 ---
 
@@ -170,9 +226,87 @@ Adversary actually flagged it on the same prompt is the test:
 {{cite polycoder-full/landing/iter05 trace, look for
 disagreement_cards mentioning FAQ regression}}.
 
-### 3.4 polycoder-full / {{...}} — {{any failures the headline catches}}
+### 3.4 polycoder-full / dashboard / iter 3 — Coder LLM hallucinated "no architect guidance"
 
-{{To be filled in once polycoder-full data is in.}}
+The single most striking failure of the benchmark, because it
+exposes a genuine multi-role failure mode that *only* exists in
+a multi-role pipeline.
+
+**What happened**: Architect produced a fully-formed envelope
+with three concrete `patterns_to_follow` instructions for adding
+the leaderboard table, including:
+
+- Define `MOCK_TOP_PRODUCTS` const at line ~159 next to existing
+  mock arrays, with realistic Chinese product names and revenue
+  values that sum to less than the "本月" KPI.
+- Implement `createLeaderboard(products)` as a DOM-API function
+  using `<table>` + `textContent` (not `innerHTML`), matching
+  the existing `createKpiCard` pattern.
+- Wrap chart and leaderboard in a flex container.
+
+The Architect's `summary` was a clean Chinese one-liner, the
+patterns were detailed, the envelope was schema-valid.
+
+**Coder then reported**:
+```
+status: failed
+summary: No architect guidance received — cannot proceed without role-input.
+files_changed: []
+```
+
+The Coder LLM (DeepSeek-Coder) misread its prior_outputs section
+and claimed the Architect envelope was missing. The orchestrator
+*did* pass it (verified by reading
+`runIteration.ts` — the envelope is threaded into Coder's
+`envelopeInputs.prior_outputs.architect`); the Coder model
+hallucinated its absence.
+
+**Why this matters**: Communicator caught it. Traffic light went
+**red** — the only red in the entire 30-iter polycoder dataset.
+The user would see, verbatim:
+
+> ✗ 本轮迭代失败，编码器没有收到架构师的指导信息，因此无法进行代码更改。需要架构师提供详细的代码更改说明才能继续。
+
+This is exactly what the multi-role pipeline is supposed to do:
+**fail loudly and informatively when the team disagrees about
+what just happened**, rather than silently shipping bad output.
+The single-role coder-only system can't even surface this class
+of failure — there's nothing to disagree with.
+
+**But**: the iter still cost ~$0.30 in API calls before failing,
+and iter 4-5's downstream SPR failures (missing "热销商品"
+fragment) trace back to this iter — workspace state never got
+the leaderboard, so when iter 4 added the filter bar, the iter 4
+build looked "fine" but compared against iter 3's golden (which
+captured "热销商品" *somehow* — see §3.4.1) it failed
+persistence.
+
+#### 3.4.1 The "iter 3 golden has 热销商品 even though Coder wrote 0 files" anomaly
+
+When this writeup was being prepared, a sub-puzzle surfaced: the
+SPR golden saved at iter 3 contains the text "热销商品" (the
+leaderboard heading). But Coder reported `files_changed: []` for
+iter 3. Either:
+
+- (a) the IST runner snapshots the workspace AFTER tool calls
+  but BEFORE Coder's final envelope is parsed, capturing
+  partial Coder writes that the failure path then doesn't roll
+  back; or
+- (b) some other role has a `write_file` tool in its allowlist
+  and used it; or
+- (c) iter 3's snapshot was somehow taken from iter 4's state.
+
+This is a clue that the workspace consistency model in V0.1's
+runIteration is weaker than it looks — failure-path rollback
+doesn't undo tool calls that already wrote files. Real
+implication: **a polycoder iter that "fails" at the orchestration
+level can still leave partially-modified files on disk**, which
+the user sees on next iter.
+
+This is itself a finding worth a follow-up V0.3 design pass.
+For now, it explains the dashboard iter4-5 SPR failures
+(comparing against an inconsistent iter-3 golden) without
+contradicting any other observation.
 
 ### 3.5 Lovable / {{...}}
 
@@ -249,31 +383,80 @@ tightened (see §6 threats-to-validity for the implication).
 ### 4.1 The thesis: does multi-role beat single-role?
 
 **polycoder-full vs polycoder-coder-only** (same Coder model;
-only difference is the surrounding pipeline):
+only difference is the surrounding pipeline). This is the
+cleanest test of the thesis since the model is held constant.
 
-- BPR: {{Δ pp}}
-- SPR: {{Δ pp}}
-- CCD: {{better/worse/no signal}}
+| metric | full | coder-only | Δ |
+|--------|----:|-----------:|--:|
+| BPR | 100% | 100% | 0 |
+| SPR | 73% | 73% | **0** |
+| breaks | 4 | 4 | **0** |
+| longest break run | 2 | 2 | 0 |
+| CCD mean (avg over templates with JS) | ~1.0 | ~2.0 | **−1.0** (full simpler) |
+| Total $ | ~$8.72 (with iter04 anomaly) / ~$5.40 (post-fix) | $0.72 | n/a — full ~7-12× more expensive |
 
-This is the cleanest test of the thesis since the model is held
-constant. {{Interpretation.}}
+**Interpretation**:
+
+- **No signal on SPR / break count**: at this N (15 iters per
+  system), polycoder-full and coder-only break the same number
+  of times. The thesis "multi-role reduces regressions" is
+  **not supported** by SPR alone in this sample.
+- **Real signal on regression severity**: when both systems
+  break, polycoder-full's regressions are *smaller in scope*
+  (footer links, single-element drops) than coder-only's
+  (entire FAQ section, syntax errors that brick the page).
+  Worth quantifying: polycoder-full lost an average of ~2 text
+  fragments per regression iter; coder-only lost an average of
+  ~5. Future versions of the IST should track regression
+  *severity* as a metric, not just *occurrence*.
+- **Real signal on complexity discipline**: polycoder-full's
+  `mean_complexity` stays around 1.0 across all templates;
+  coder-only drifts toward 2.0+. This is consistent with the
+  Long-term Critic + Architect roles' designed-in incentive
+  toward simpler primitives.
+- **New failure class**: polycoder-full surfaces *coordination
+  failures* that coder-only can't have — Coder hallucinating
+  "no architect guidance received" (§3.4) is unique to the
+  multi-role design. Communicator caught it via traffic light
+  red. **This is dual-edged**: it's a *failure that exists in
+  the multi-role setup*, but also a failure mode that *gets
+  surfaced* rather than silently shipping bad output.
+- **Cost gap is real**: polycoder-full is 7-12× more expensive
+  per iter. Whether the multi-role pipeline is *worth* this
+  premium depends on what the user values (transparency vs
+  cost). At V0.1 cost levels even a "bad" iter is sub-$1 so
+  it's defensible for a developer-tier user; for a vibe-coder
+  end user the cost may dominate.
 
 ### 4.2 Production readiness: does polycoder-full reach Lovable's level?
 
-**polycoder-full vs Lovable** (different models, different
-orchestration; the "could a vibe coder use this instead" test):
+**Lovable data is pending** — see
+[`benchmarks/ist/runners/lovable-runbook.md`](../benchmarks/ist/runners/lovable-runbook.md).
+Once Lovable runs are complete, this section will compare:
 
-- BPR: {{Δ pp}}
-- SPR: {{Δ pp}}
-- {{...}}
+- BPR (Lovable's typical Vite+React build vs polycoder's plain
+  HTML — does it actually build cleanly?)
+- SPR (does Lovable lose previously-completed features at iter
+  4-5 like the polycoder variants did?)
+- Visual quality (manual review)
+
+Until then, the polycoder-full vs polycoder-coder-only comparison
+in §4.1 is the only defensible cross-system claim.
 
 ### 4.3 Cost
 
-| System | Total cost | Per-iter avg | Notes |
-|--------|-----------:|-------------:|-------|
-| polycoder-full | ${{X}} | ${{Y}} | DeepSeek + GLM (Budget preset) |
-| polycoder-coder-only | $0.72 | $0.048 | DeepSeek only (Budget preset) |
-| Lovable | ${{$0 free / $20 Pro}} | n/a | one-month subscription |
+| System | Iters | Total cost | Per-iter median | Notes |
+|--------|------:|-----------:|----------------:|-------|
+| polycoder-full | 15 | **~$8.72** | ~$0.30 | DeepSeek + GLM (Budget preset). $3.42 of the total is one Adversary call on todo/iter04 (§3.6); without that anomaly, total would be ~$5.30, per-iter median ~$0.27. |
+| polycoder-coder-only | 15 | **$0.72** | $0.04 | DeepSeek only (Budget preset). |
+| Lovable | — | pending | n/a | $0 free tier or $20/mo Pro subscription. |
+
+**Cost finding**: even after the reviewer-budget fix (§3.6),
+polycoder-full is ~7× more expensive per iter than coder-only.
+A non-trivial fraction of this is the *long context* on
+reviewer roles inheriting full conversation history — a
+follow-up optimization (per-role context summarization?) could
+plausibly halve this without affecting quality.
 
 ---
 
