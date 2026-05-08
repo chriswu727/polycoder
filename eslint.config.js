@@ -4,7 +4,21 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    ignores: ['node_modules/**', 'dist/**', 'build/**', 'out/**', 'release/**'],
+    ignores: [
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      'out/**',
+      'release/**',
+      // IST runner output: workspace snapshots are LLM-generated
+      // browser code, not part of polycoder itself. They use globals
+      // (document, localStorage, Chart) that our Node-targeted
+      // config doesn't recognize.
+      'benchmarks/ist/runs/**',
+      'benchmarks/ist/metrics/polycoder-full/**',
+      'benchmarks/ist/metrics/polycoder-coder-only/**',
+      'benchmarks/ist/metrics/lovable/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

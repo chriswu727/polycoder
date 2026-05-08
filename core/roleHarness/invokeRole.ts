@@ -19,6 +19,26 @@ import { buildInputEnvelope, type BuildInputEnvelopeArgs } from './envelopeBuild
 export const MAX_ROLE_ATTEMPTS = 3
 export const MAX_TOOL_CALLS_PER_ROLE = 40
 
+/**
+ * Per-role tool-call budget overrides. Reviewer roles
+ * (adversary, long_term_critic) typically only need to read a few
+ * files and don't benefit from a 40-call ceiling — a runaway loop
+ * there compounds quadratically (every retained tool result stays
+ * in the next prompt's context). Tighter budget keeps cost bounded
+ * without hurting their quality on small projects.
+ *
+ * Caught in V0.2.9 polycoder-full/todo/iter04: Adversary on
+ * GLM-4-plus burned 487K input tokens / $3.42 across 40 tool calls.
+ */
+const TOOL_CALLS_BY_ROLE: Partial<Record<RoleType, number>> = {
+  adversary: 12,
+  long_term_critic: 12,
+}
+
+function maxToolCallsFor(role: RoleType): number {
+  return TOOL_CALLS_BY_ROLE[role] ?? MAX_TOOL_CALLS_PER_ROLE
+}
+
 export type InvokeRoleArgs = {
   role: RoleType
   provider: ModelProvider
@@ -114,7 +134,7 @@ export async function invokeRole(args: InvokeRoleArgs): Promise<InvokeRoleResult
         initialUserMessage: userMessage,
         tools,
         ctx,
-        maxToolCalls: MAX_TOOL_CALLS_PER_ROLE,
+        maxToolCalls: maxToolCallsFor(role),
       })
     } catch (e) {
       if (e instanceof ToolLoopBudgetExceeded) {

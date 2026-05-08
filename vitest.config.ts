@@ -14,7 +14,14 @@ export default defineConfig({
       'src/**/*.test.ts',
       'benchmarks/**/*.test.ts',
     ],
-    exclude: ['node_modules', 'dist', 'build'],
+    exclude: [
+      'node_modules',
+      'dist',
+      'build',
+      // IST runner output: tests inside snapshots are LLM-generated
+      // and not part of polycoder's own test suite.
+      'benchmarks/ist/runs/**',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json'],
