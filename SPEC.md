@@ -441,6 +441,12 @@ is the primary risk for a project of this size.
 
 ## 13. Companion Documents
 
+- [`map.md`](./map.md) — Project navigation map. The first thing a
+  new (or returning) contributor should read.
+
+- [`todo.md`](./todo.md) — Phased build plan with concrete tasks
+  through V1.0. The working backlog.
+
 - [`docs/decisions.md`](./docs/decisions.md) — Architecture Decision
   Log. ADR-001 through ADR-006 cover the original design; ADR-007
   through ADR-012 cover decisions informed by reading Claude Code's
@@ -453,6 +459,15 @@ is the primary risk for a project of this size.
 - [`docs/prompts/`](./docs/prompts/) — V0.1 first-draft system prompts
   for all 8 roles, plus a shared preamble. See `docs/prompts/README.md`
   for the file index and assembly-time composition.
+
+- [`docs/specs/`](./docs/specs/) — Implementation contracts for the
+  three biggest layers:
+  - [`providers.md`](./docs/specs/providers.md) — LLM provider
+    abstraction + 5 V0 adapters
+  - [`tools.md`](./docs/specs/tools.md) — Tool framework + 10 V0
+    tools
+  - [`orchestrator.md`](./docs/specs/orchestrator.md) — Pipeline
+    state machine, conflict detection, retries, memory updates
 
 ## 14. Cross-cutting design principles (informed by Claude Code learnings)
 

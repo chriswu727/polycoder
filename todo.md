@@ -1,0 +1,469 @@
+# polycoder — Build Plan
+
+> **Read this with [`map.md`](./map.md) for context.**
+> Tasks are ordered by phase. Within a phase, layer dependencies are
+> noted. Check `[x]` when done; do not delete completed items —
+> history is information.
+
+---
+
+## Status
+
+- ✅ **Design phase complete.** All design and flow documents are
+  drafted. SPEC, ADRs (1-12), 8 role prompts + shared preamble,
+  3 implementation specs (providers / tools / orchestrator), this
+  build plan, and the project map.
+- ⬜ **Implementation phase not started.** No source code has been
+  written. The `src/`, `core/`, `tools/`, `providers/`, `electron/`,
+  and `data/` directories planned in [`map.md` §5](./map.md#5-code-map-forward-looking--packages-we-will-create)
+  do not yet exist.
+
+**Next concrete step**: Phase V0.1, Task A.1 (repository scaffolding).
+
+---
+
+## Phase V0.1 — Skeleton
+
+**Goal**: end-to-end working pipeline that produces a real app from a
+real prompt, using all 8 roles, with the Settings UI to configure
+secrets and role-model assignments. No benchmarks yet.
+
+**Exit criteria**:
+- User can launch the desktop app, add 1+ secrets, configure all 8
+  roles, type a prompt, and watch the pipeline produce code.
+- Pipeline runs to completion or surfaces a meaningful error.
+- All 10 V0 tools work.
+- Project memory persists across iterations.
+
+### Layer A — Repo scaffolding (foundational, must be first)
+
+- [ ] **A.1** Initialize TypeScript monorepo structure:
+      `package.json`, `tsconfig.json` (strict), `.eslintrc`,
+      `.prettierrc`. Decide: bun vs pnpm vs npm. Recommend **bun**
+      (fast, single binary, native test runner).
+- [ ] **A.2** Set up Vite + React + Tailwind + shadcn/ui scaffold
+      under `src/`. Verify `bun dev` shows a hello-world page.
+- [ ] **A.3** Set up Electron main + preload under `electron/`.
+      Verify `bun electron:dev` opens a window loading the Vite dev
+      server.
+- [ ] **A.4** Set up `bun test` config; write one passing dummy test.
+      Set up CI via GitHub Actions (lint + typecheck + test).
+- [ ] **A.5** Set up SQLite via better-sqlite3 (sync API; works in
+      Electron main). Write a minimal smoke test.
+
+### Layer B — Data model + persistence
+
+Reference: [`SPEC.md` §5](./SPEC.md#5-data-model)
+
+- [ ] **B.1** Define TypeScript types for `Workspace`, `Secret`,
+      `RoleAssignment`, `ProjectMemory`, `IterationTrace`,
+      `RoleOutput` envelope, all role payload types (Zod schemas
+      derived from `docs/prompts/*.md` output sections).
+- [ ] **B.2** SQLite schema migration v1: tables for `workspaces`,
+      `secrets`, `role_assignments`, `iterations`, `project_memory`,
+      `cost_records`. (`schema.sql`)
+- [ ] **B.3** Workspace CRUD (`data/workspace.ts`).
+- [ ] **B.4** Project memory CRUD (`data/projectMemory.ts`) with
+      structured update support (decisions, conventions, components,
+      tech debt — see `docs/specs/tools.md` §4.6).
+- [ ] **B.5** Iteration history CRUD (`data/iterations.ts`).
+- [ ] **B.6** Cost records CRUD (`data/costRecords.ts`).
+
+### Layer C — Provider abstraction
+
+Reference: [`docs/specs/providers.md`](./docs/specs/providers.md)
+
+- [ ] **C.1** Define `ModelProvider` interface + types
+      (`providers/ModelProvider.ts`).
+- [ ] **C.2** Define `ProviderError` taxonomy
+      (`providers/ProviderError.ts`).
+- [ ] **C.3** Implement `OpenAICompatProvider`
+      (`providers/OpenAICompatProvider.ts`). Used as base for many
+      others; should ship before they do.
+- [ ] **C.4** Implement `DeepSeekProvider` (extends OpenAI-compat
+      with provider-specific quirks). Includes
+      `prompt_cache_hit_tokens` mapping.
+- [ ] **C.5** Implement `QwenProvider` (DashScope OpenAI-compat
+      endpoint). Includes Qwen-VL-Max support for Designer.
+- [ ] **C.6** Implement `GLMProvider` (Zhipu open.bigmodel.cn).
+      Includes free-tier rate limit handling.
+- [ ] **C.7** Implement `AnthropicProvider` (native API). Most
+      divergent — separate system prompt path, cache markers, tool
+      schema conversion.
+- [ ] **C.8** `prepareSystemPrompt` shared helper for handling the
+      `___POLYCODER_PROMPT_BOUNDARY___` marker per provider.
+- [ ] **C.9** Provider registry (`providers/registry.ts`).
+- [ ] **C.10** Unit tests for each adapter (mocked SSE → expected
+      stream events; mocked errors → expected ProviderErrorCodes).
+- [ ] **C.11** Integration test scaffold (gated by env vars; opt-in
+      with real API keys).
+
+### Layer D — Secret manager
+
+Reference: [`SPEC.md` §8](./SPEC.md#8-storage--security)
+
+- [ ] **D.1** Electron secure storage abstraction
+      (`electron/secrets/keystore.ts`):
+      - macOS → Keychain Services (via `keytar` or
+        `@napi-rs/keyring`)
+      - Windows → Credential Manager
+      - Linux → Secret Service / libsecret
+- [ ] **D.2** Secret CRUD on top of keystore (`data/secrets.ts`):
+      `addSecret`, `getSecret`, `listSecrets`, `deleteSecret`,
+      `updateSecret`. Stored data: plaintext key never persisted to
+      SQLite — only Secret metadata (name, provider, last_tested);
+      key lives in OS keychain only.
+- [ ] **D.3** `testConnection(secret)` — calls
+      `provider.testConnection()` and updates `last_tested` /
+      `available_models` on success.
+- [ ] **D.4** IPC bridge so renderer can call Secret CRUD without
+      seeing the actual API key (only the metadata).
+
+### Layer E — Tool framework + V0 tools
+
+Reference: [`docs/specs/tools.md`](./docs/specs/tools.md)
+
+- [ ] **E.1** `ToolDef` interface + `buildTool` factory
+      (`tools/ToolDef.ts`).
+- [ ] **E.2** Workspace path validation helpers
+      (`tools/workspaceBoundary.ts`).
+- [ ] **E.3** `read_file` (`tools/readFile.ts`).
+- [ ] **E.4** `write_file` (`tools/writeFile.ts`).
+- [ ] **E.5** `edit_file` (`tools/editFile.ts`) with read-before-edit
+      tracking.
+- [ ] **E.6** `read_project_memory` (`tools/readProjectMemory.ts`).
+- [ ] **E.7** `update_project_memory`
+      (`tools/updateProjectMemory.ts`).
+- [ ] **E.8** `read_history` (`tools/readHistory.ts`).
+- [ ] **E.9** `bash` (`tools/bash.ts`) with regex sandbox.
+- [ ] **E.10** `run_test_suite` (`tools/runTestSuite.ts`).
+- [ ] **E.11** `ask_user_question` (`tools/askUserQuestion.ts`)
+      including IPC event for UI.
+- [ ] **E.12** `read_design_tokens` (`tools/readDesignTokens.ts`).
+- [ ] **E.13** Tool registry (`tools/registry.ts`).
+- [ ] **E.14** Zod-to-JSON-Schema helper (`tools/toJsonSchema.ts`)
+      with OpenAI/Anthropic format variants.
+- [ ] **E.15** Unit tests for each tool.
+
+### Layer F — Role harness
+
+Reference: [`docs/specs/orchestrator.md`](./docs/specs/orchestrator.md) §3
+
+- [ ] **F.1** Role definitions (one TS file per role under
+      `core/roles/`). Each loads the static prefix from
+      `docs/prompts/*.md` at startup.
+- [ ] **F.2** `assembleSystemPrompt` (`core/roleHarness/promptAssembly.ts`).
+      Concatenates shared preamble + role static prefix + boundary
+      marker + dynamic suffix.
+- [ ] **F.3** XML envelope builder (`core/roleHarness/envelopeBuilder.ts`).
+      Constructs `<role-input>` from upstream outputs.
+- [ ] **F.4** XML envelope parser (`core/roleHarness/envelopeParser.ts`).
+      Parses `<role-output>` → typed object. Robust against minor
+      whitespace / formatting issues; rejects malformed input
+      cleanly.
+- [ ] **F.5** Payload validator (`core/roleHarness/payloadValidator.ts`).
+      Zod-based; per-role outputSchema.
+- [ ] **F.6** `runWithTools` inner loop
+      (`core/roleHarness/runWithTools.ts`). Provider call → tool use
+      → tool execution → tool result → repeat.
+- [ ] **F.7** `invokeRole` with retry/re-prompt
+      (`core/roleHarness/invokeRole.ts`). Includes the 6 re-prompt
+      cases per orchestrator spec §6.
+- [ ] **F.8** Unit tests for envelope parser (good + malformed
+      inputs).
+- [ ] **F.9** Unit tests for payload validators per role.
+
+### Layer G — Pipeline orchestrator
+
+Reference: [`docs/specs/orchestrator.md`](./docs/specs/orchestrator.md)
+
+- [ ] **G.1** Pipeline event bus (`core/orchestrator/events.ts`).
+- [ ] **G.2** `runParallelReviewers`
+      (`core/orchestrator/parallelReviewers.ts`).
+- [ ] **G.3** `detectConflicts` pure function
+      (`core/orchestrator/conflictDetection.ts`).
+- [ ] **G.4** `detectSynthesisDiscipline` regex check
+      (`core/orchestrator/synthesisDiscipline.ts`). Architect-only.
+- [ ] **G.5** `applyMemoryUpdates`
+      (`core/orchestrator/applyMemoryUpdates.ts`). Runs after
+      successful pipeline.
+- [ ] **G.6** `runIteration` top-level
+      (`core/orchestrator/runIteration.ts`). The state machine
+      orchestrating sequential → parallel → sequential phases.
+- [ ] **G.7** Cost tracker (`core/orchestrator/costTracker.ts`).
+- [ ] **G.8** Iteration trace persistence
+      (`core/orchestrator/iterationTrace.ts`).
+- [ ] **G.9** Pipeline error taxonomy
+      (`core/orchestrator/PipelineError.ts`).
+- [ ] **G.10** Abort handling (`core/orchestrator/abort.ts`).
+- [ ] **G.11** Unit tests: detectConflicts (table-driven; many
+      conflict-rule cases).
+- [ ] **G.12** Unit tests: detectSynthesisDiscipline (good + bad
+      strings).
+- [ ] **G.13** Integration test: end-to-end happy path with mocked
+      providers ("build me a todo app" → produces files).
+
+### Layer H — Settings UI
+
+Reference: [`SPEC.md` §6.1, §6.2](./SPEC.md#6-ui-surfaces)
+
+- [ ] **H.1** Workspace state (Zustand store) for the renderer.
+- [ ] **H.2** IPC commands: `workspace.create`, `workspace.list`,
+      `workspace.load`.
+- [ ] **H.3** Secrets tab UI (`src/components/settings/SecretsTab.tsx`):
+      list, add, edit, delete, test-connection.
+- [ ] **H.4** Team Configuration tab UI
+      (`src/components/settings/TeamConfigTab.tsx`): table with one
+      row per role, dropdowns for credential and model.
+- [ ] **H.5** Preset application logic + UI button.
+- [ ] **H.6** Verification independence warning UI
+      (per ADR-011: red banner when Coder model = Adversary model
+      or Coder model = Test Runner model).
+
+### Layer I — Workspace UI (main view)
+
+Reference: [`SPEC.md` §6.3](./SPEC.md#6-ui-surfaces)
+
+- [ ] **I.1** Chat-like main view layout.
+- [ ] **I.2** Prompt input component.
+- [ ] **I.3** Iteration display: traffic light, summary, what-changed
+      list.
+- [ ] **I.4** L1 transparency: model badges per role, cost summary,
+      duration.
+- [ ] **I.5** Disagreement card component
+      (`src/components/transparency/DisagreementCard.tsx`).
+- [ ] **I.6** What-to-do-next checklist component.
+- [ ] **I.7** File diff viewer (for showing what Coder changed).
+- [ ] **I.8** Live progress display during pipeline run (per-role
+      streaming status: idle → in-progress → done).
+
+### Layer J — End-to-end + packaging
+
+- [ ] **J.1** End-to-end smoke test: real keys (DeepSeek + GLM
+      free), real prompt ("build a todo app with localStorage"),
+      verify produced files actually run (Vite + React + bun dev).
+- [ ] **J.2** Mac DMG dev build (no signing yet).
+- [ ] **J.3** Documentation: install instructions in README.
+- [ ] **J.4** v0.1 git tag + GitHub release notes.
+
+---
+
+## Phase V0.2 — Validation
+
+**Goal**: prove the MVP→production thesis with a benchmark.
+
+**Preconditions**: V0.1 exit criteria met. Working pipeline.
+
+- [ ] **V0.2.1** Iteration Survival Test (IST) benchmark design
+      doc (`docs/specs/iteration-survival-test.md`). Specifies:
+      app templates, iteration prompts per template, metrics, scoring.
+- [ ] **V0.2.2** 5 app templates spec:
+      - Todo app
+      - E-commerce: simple product catalog + cart
+      - Dashboard: 3-chart admin dashboard
+      - Chatbot UI (frontend only, mock backend)
+      - SaaS landing page
+- [ ] **V0.2.3** 10 iteration prompts per template (50 total). Each
+      iteration adds ~1 feature.
+- [ ] **V0.2.4** IST runner: polycoder side. Loops through 50 iters,
+      records metrics.
+- [ ] **V0.2.5** IST runner: Lovable baseline (manual or scripted).
+- [ ] **V0.2.6** IST runner: Bolt baseline.
+- [ ] **V0.2.7** IST runner: single-Claude-via-Cursor baseline.
+- [ ] **V0.2.8** Metrics computation (`core/metrics/`):
+      - Test coverage maintenance rate (%)
+      - Cyclomatic complexity growth (per-file, per-iteration)
+      - Break frequency (iterations where the app didn't run)
+      - Time-to-recovery from a break
+- [ ] **V0.2.9** Metrics dashboard UI in workspace (V0.2 only — for
+      developer use; V1.0 hides behind a feature flag).
+- [ ] **V0.2.10** L2 transparency: expandable team-discussion view
+      with per-role I/O traces.
+- [ ] **V0.2.11** Salience scoring for memory updates (which
+      decisions/lessons should the Architect promote to "important"?)
+- [ ] **V0.2.12** Write up benchmark results in
+      `docs/benchmark-results-v0.2.md`. THIS IS THE PROJECT'S CORE
+      ARTIFACT.
+- [ ] **V0.2.13** v0.2 git tag.
+
+---
+
+## Phase V0.3 — Local sandbox
+
+**Goal**: user can run the polycoder-produced app without leaving
+the polycoder window.
+
+**Preconditions**: V0.2 complete (we have validation that the
+pipeline works).
+
+- [ ] **V0.3.1** Decision: WebContainer (StackBlitz) vs e2b vs
+      native Docker. ADR-013. Recommend WebContainer for V0 (browser
+      embedded, free, JS-only is fine for our target).
+- [ ] **V0.3.2** Sandbox integration layer
+      (`core/sandbox/`).
+- [ ] **V0.3.3** "Open in localhost" button in workspace UI.
+- [ ] **V0.3.4** File watcher / hot reload bridge (sandbox sees
+      Coder's changes immediately).
+- [ ] **V0.3.5** Browser preview pane in workspace UI.
+- [ ] **V0.3.6** Console output forwarding (sandbox stdout → UI).
+- [ ] **V0.3.7** v0.3 git tag.
+
+---
+
+## Phase V0.4 — Polish
+
+**Goal**: ready to put in front of friends-and-family beta users.
+
+- [ ] **V0.4.1** L3 transparency: debug mode toggle, full prompt
+      templates and model parameters visible.
+- [ ] **V0.4.2** Custom prompt override UI: per-role textarea that
+      replaces the default prompt for that role in this workspace.
+- [ ] **V0.4.3** Doubao provider adapter (`providers/DoubaoProvider.ts`).
+- [ ] **V0.4.4** Kimi provider adapter (`providers/KimiProvider.ts`).
+- [ ] **V0.4.5** MiniMax provider adapter
+      (`providers/MiniMaxProvider.ts`).
+- [ ] **V0.4.6** Project memory inspector UI (read-only view of all
+      memory contents).
+- [ ] **V0.4.7** Project memory editor UI (user can manually edit /
+      delete memory entries — power user feature).
+- [ ] **V0.4.8** Iteration history view (workspace-level: all past
+      iterations with their traffic lights, costs, durations).
+- [ ] **V0.4.9** Cost analytics view: per-workspace lifetime spend,
+      breakdown by provider/model.
+- [ ] **V0.4.10** Onboarding tutorial: first-run wizard that walks
+      through adding a Secret and configuring roles.
+- [ ] **V0.4.11** Settings: workspace export/import (JSON, with
+      keys redacted — keys remain in keychain).
+- [ ] **V0.4.12** Settings: workspace deletion + cleanup of secrets
+      that aren't used elsewhere.
+- [ ] **V0.4.13** Polish pass on all UI: spacing, typography,
+      accessibility (keyboard nav, ARIA).
+- [ ] **V0.4.14** v0.4 git tag.
+
+---
+
+## Phase V1.0 — Public release
+
+**Goal**: shippable to anyone.
+
+- [ ] **V1.0.1** Mac DMG production build with code signing
+      (Apple Developer account required).
+- [ ] **V1.0.2** Mac auto-update via Squirrel.Mac.
+- [ ] **V1.0.3** Windows installer (NSIS or Squirrel.Windows).
+- [ ] **V1.0.4** Windows auto-update.
+- [ ] **V1.0.5** First-run flow: license/terms acknowledgement,
+      privacy notice (we collect zero telemetry by default).
+- [ ] **V1.0.6** In-app tutorial walkthrough (refined version of
+      V0.4.10 onboarding).
+- [ ] **V1.0.7** Marketing site (single-page, hosted on Cloudflare
+      Pages or similar). Domain TBD.
+- [ ] **V1.0.8** Demo video (~3 min, Chinese subtitles).
+- [ ] **V1.0.9** Distribution plan:
+      - Hacker News post (timed to product completeness)
+      - 小红书 介绍 + tutorial
+      - V2EX
+      - 即刻
+      - B站 demo video
+- [ ] **V1.0.10** Initial 50-user beta plan: invite list, feedback
+      channel (Discord? GitHub Discussions? feishu group?).
+- [ ] **V1.0.11** Telemetry decision: opt-in only; if implemented,
+      what's collected (per `docs/specs/orchestrator.md` §15-Q5).
+- [ ] **V1.0.12** v1.0 git tag + GitHub release.
+
+---
+
+## Cross-cutting tasks (bug fixes, refactors as needed)
+
+These appear during implementation as issues; not pre-planned.
+
+- [ ] (Empty — populated by future iterations.)
+
+---
+
+## Open questions blocking work
+
+These need resolution before the dependent task can start. As of
+2026-05-08:
+
+1. **Final project name** (ADR-006 marks `polycoder` as provisional).
+   Decision deferred to V0.2 — doesn't block V0.1 work.
+
+2. **bun vs pnpm** (Task A.1). Recommend bun. **Not blocking** — pick
+   when starting A.1.
+
+3. **WebContainer vs e2b vs Docker** for V0.3 sandbox (Task V0.3.1).
+   Not blocking V0.1 or V0.2.
+
+4. **Telemetry policy** (Task V1.0.11). Not blocking earlier work.
+
+5. **License** (currently TBD). MIT or Apache-2.0 most likely.
+   Pick before V1.0.
+
+6. **Naming for the disagreement card UX** — call it "disagreement
+   card", "team disagreement", "second opinion", or something more
+   marketable? Not blocking implementation; UI text decision can
+   be deferred.
+
+---
+
+## Parking lot (V1.1+ ideas)
+
+Things that have been mentioned but explicitly deferred past V1.0:
+
+- **Cloud / web version** (multi-device, team workspaces) — V2.x
+- **Plugin system for custom roles** (à la Claude Code's
+  `loadAgentsDir` pattern) — V2.x
+- **Skills system** for domain-specific role extensions — V2.x
+- **Multi-language UI** (English first, Chinese current default; add
+  Japanese, Korean post-launch) — V1.1
+- **Voice input** — V1.1
+- **Fine-tuned small models** for narrow roles (e.g., a custom
+  Adversary fine-tuned on real bug datasets) — research project,
+  unscheduled
+- **Marketplace** for shared role configurations / presets — V2.x
+- **Direct deploy** (push polycoder-produced apps to Vercel/Netlify
+  with one click) — V1.x
+
+---
+
+## How to use this file
+
+- **Picking up work**: scan for the first unchecked `[ ]` in the
+  current phase. Layers within a phase are mostly sequential
+  (Layer A before B before C…), but tasks within a layer can often
+  parallelize.
+- **Marking done**: change `[ ]` to `[x]`. Don't delete completed
+  items.
+- **Adding a task**: append to the relevant layer/phase. Keep IDs
+  stable (e.g. don't renumber when inserting).
+- **Adding a phase**: rare — these correspond to product milestones.
+  Discuss before adding.
+- **Bumping a task across phases**: if V0.1 task gets too big,
+  split it; don't move it forward unless it's truly out of scope.
+  V0.1 is meant to be the substantial foundational lift.
+
+---
+
+## Estimates (rough)
+
+Per layer, in raw LOC of source code (not counting tests):
+
+| Layer | Approx LOC |
+|-------|------------|
+| A. Repo scaffolding | 200 (mostly config) |
+| B. Data model + persistence | 800 |
+| C. Provider abstraction | 1500 |
+| D. Secret manager | 400 |
+| E. Tool framework + 10 tools | 1500 |
+| F. Role harness | 1200 |
+| G. Pipeline orchestrator | 2000 |
+| H. Settings UI | 1000 |
+| I. Workspace UI | 1500 |
+| J. End-to-end + packaging | 200 |
+| **V0.1 total** | **~10300 LOC source + ~7000 LOC tests** |
+
+V0.2-V1.0 add an estimated 5000-8000 LOC on top.
+
+These estimates are rough. The point isn't precision — it's that the
+project is **non-trivial** and the design-first investment is
+justified.
