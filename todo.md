@@ -13,17 +13,19 @@
   drafted. SPEC, ADRs (1-13), 8 role prompts + shared preamble,
   3 implementation specs (providers / tools / orchestrator), this
   build plan, and the project map.
-- 🟡 **Implementation phase: V0.1 Layers A + B + C + D complete.**
+- 🟡 **Implementation phase: V0.1 Layers A-E complete.**
   - ✅ Layer A — Repo scaffolding (5/5)
   - ✅ Layer B — Data model + persistence (6/6)
   - ✅ Layer C — Provider abstraction (11/11)
   - ✅ Layer D — Secret manager (4/4)
-  - ⬜ Layers E-J pending. See per-layer task lists below.
-- 🧪 **Test count**: 151 passing + 4 skipped (integration), 20 files.
-- 🟢 **CI** green since b233087.
+  - ✅ Layer E — Tool framework + 10 V0 tools (15/15)
+  - ⬜ Layers F-J pending. See per-layer task lists below.
+- 🧪 **Test count**: 218 passing + 4 skipped (integration), 27 files.
+- 🟢 **CI** green.
 
-**Next concrete step**: Layer E.1 — `ToolDef` interface +
-`buildTool` factory in `tools/ToolDef.ts`.
+**Next concrete step**: Layer F.1 — Role definitions (one TS file
+per role under `core/roles/`, loading the static prefix from
+`docs/prompts/*.md`).
 
 ---
 
@@ -220,27 +222,71 @@ Reference: [`SPEC.md` §8](./SPEC.md#8-storage--security)
 
 Reference: [`docs/specs/tools.md`](./docs/specs/tools.md)
 
-- [ ] **E.1** `ToolDef` interface + `buildTool` factory
-      (`tools/ToolDef.ts`).
-- [ ] **E.2** Workspace path validation helpers
-      (`tools/workspaceBoundary.ts`).
-- [ ] **E.3** `read_file` (`tools/readFile.ts`).
-- [ ] **E.4** `write_file` (`tools/writeFile.ts`).
-- [ ] **E.5** `edit_file` (`tools/editFile.ts`) with read-before-edit
-      tracking.
-- [ ] **E.6** `read_project_memory` (`tools/readProjectMemory.ts`).
-- [ ] **E.7** `update_project_memory`
-      (`tools/updateProjectMemory.ts`).
-- [ ] **E.8** `read_history` (`tools/readHistory.ts`).
-- [ ] **E.9** `bash` (`tools/bash.ts`) with regex sandbox.
-- [ ] **E.10** `run_test_suite` (`tools/runTestSuite.ts`).
-- [ ] **E.11** `ask_user_question` (`tools/askUserQuestion.ts`)
-      including IPC event for UI.
-- [ ] **E.12** `read_design_tokens` (`tools/readDesignTokens.ts`).
-- [ ] **E.13** Tool registry (`tools/registry.ts`).
-- [ ] **E.14** Zod-to-JSON-Schema helper (`tools/toJsonSchema.ts`)
-      with OpenAI/Anthropic format variants.
-- [ ] **E.15** Unit tests for each tool.
+- [x] **E.1** `ToolDef` interface + `buildTool` factory
+      (`tools/ToolDef.ts`). Includes ToolName registry, ToolContext
+      with read_files_in_iteration tracking (for read-before-edit),
+      ToolError taxonomy with 9 codes, BuiltTool type. 4 tests pass.
+      Done 2026-05-08.
+- [x] **E.2** Workspace path validation helpers
+      (`tools/workspaceBoundary.ts`). resolveInWorkspace handles
+      relative + absolute paths, ../ escape, symlink escape (via
+      realpath), and non-existent paths (for write tools).
+      displayPath for error messages. 9 tests pass. Done 2026-05-08.
+- [x] **E.3** `read_file` (`tools/readFile.ts`). Workspace boundary
+      check, line-range slicing (1-based), 10MB cap, line-number
+      prefix, records reads in ctx.read_files_in_iteration. 5 tests.
+      Done 2026-05-08.
+- [x] **E.4** `write_file` (`tools/writeFile.ts`). Refuses overwrite,
+      auto-creates parent dirs, 1MB cap, Test Runner restricted to
+      *.test.* / *.spec.* / **/test/** / **/__tests__/**. 5 tests.
+      Done 2026-05-08.
+- [x] **E.5** `edit_file` (`tools/editFile.ts`). Read-before-edit
+      enforced, unique-old_string check (or replace_all), no-op
+      detection, atomic write via temp+rename, unified diff.
+      6 tests. Done 2026-05-08.
+- [x] **E.6** `read_project_memory`. All-section default, optional
+      single-section selector. Read-only, all roles. 2 tests.
+      Done 2026-05-08.
+- [x] **E.7** `update_project_memory`. Architect-only. Wraps
+      data-layer applyMemoryUpdate (transactional). Uses
+      ctx.iteration_number as default. 2 tests. Done 2026-05-08.
+- [x] **E.8** `read_history`. Long-term Critic + Architect only.
+      Pagination (last_n ≤ 50). Extracts intent_summary, coder_status,
+      test_runner_status, files_changed from stored envelopes;
+      include_full_envelopes flag for deep dives. 3 tests.
+      Done 2026-05-08.
+- [x] **E.9** `bash` (`tools/bash.ts`). Test Runner-only.
+      SAFE_COMMAND_PATTERNS allowlist. cwd-within-workspace check.
+      50KB output cap per stream. Timeout via SIGTERM→SIGKILL, abort
+      signal honored. 6 tests. Done 2026-05-08.
+- [x] **E.10** `run_test_suite` (`tools/runTestSuite.ts`). Detects
+      framework via package.json + config files (vitest, jest, pytest,
+      go-test, bun-test). Parses pass/fail/skip counts. 8 tests.
+      Done 2026-05-08.
+- [x] **E.11** `ask_user_question` (`tools/askUserQuestion.ts`).
+      V0.1 STUB: throws ToolError(permission_denied) directing
+      Translator to use default_assumption fallback. Schema fully
+      defined for role-harness validation. Real IPC + UI path lands
+      in Layer H. Done 2026-05-08.
+- [x] **E.12** `read_design_tokens`. Designer-only. Wraps memory
+      lookup; returns the design_tokens sub-tree (null fields on
+      iteration 1 = signal to establish). 2 tests.
+      Done 2026-05-08.
+- [x] **E.13** Tool registry (`tools/registry.ts`). ALL_TOOLS map +
+      DEFAULT_ROLE_ALLOWLISTS for all 8 roles + `toolsForRole(role)`
+      that intersects role allowlist with per-tool allowedRoles
+      (defense in depth). 11 tests pass. Done 2026-05-08.
+- [x] **E.14** Zod-to-JSON-Schema helper (`tools/toJsonSchema.ts`).
+      Uses Zod v4's native `z.toJSONSchema()` (not the v3 third-party
+      package). Produces provider-neutral ToolSchema shape; adapters
+      translate to OpenAI/Anthropic native. 2 tests pass. Done
+      2026-05-08.
+- [x] **E.15** Unit tests for each tool — co-located with each
+      source file: ToolDef.test.ts (4), workspaceBoundary.test.ts (9),
+      toJsonSchema.test.ts (2), fileTools.test.ts (16),
+      memoryTools.test.ts (9), execTools.test.ts (14),
+      registry.test.ts (11). Total: 65 new Layer E tests.
+      Done 2026-05-08.
 
 ### Layer F — Role harness
 

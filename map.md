@@ -282,11 +282,11 @@ isn't here, add it.
 ## 8. Status
 
 - ✅ **Design phase complete.** SPEC, ADRs (1-13), learnings, prompt drafts, 3 implementation contract specs.
-- 🟡 **Implementation phase: V0.1 Layers A + B + C + D complete.**
-  Repo scaffolding, data layer, provider abstraction (5 adapters),
-  and secret manager (OS keychain via keytar + IPC bridge).
-  151 tests passing (+ 4 opt-in integration tests). CI green.
-  See [`todo.md`](./todo.md).
+- 🟡 **Implementation phase: V0.1 Layers A-E complete.**
+  Repo, data layer, provider abstraction (5 adapters), secret
+  manager, and tool framework with 10 V0 tools (read/write/edit_file,
+  bash, memory ops, history, design tokens, ask_user_question stub).
+  218 tests passing. CI green. See [`todo.md`](./todo.md).
 - Working name `polycoder` is provisional (ADR-006).
 - GitHub repo: [`chriswu727/polycoder`](https://github.com/chriswu727/polycoder)
 
