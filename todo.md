@@ -34,7 +34,8 @@
 
 🎉 **V0.1 SHIPPED 2026-05-07.**
 
-**Next phase**: V0.2 — Iteration Survival Test benchmark (see below).
+**Next concrete step**: V0.2.4 — write the IST runner that drives
+polycoder-full through 15 iterations across the 3 templates.
 
 ---
 
@@ -541,37 +542,63 @@ Reference: [`SPEC.md` §6.3](./SPEC.md#6-ui-surfaces)
 
 **Preconditions**: V0.1 exit criteria met. Working pipeline.
 
-- [ ] **V0.2.1** Iteration Survival Test (IST) benchmark design
+**Scope cut 2026-05-07** — scaled down vs the original plan now
+that V0.1 cost data is in. New scope: `3 templates × 5 iters ×
+3 systems = 45 iterations`. See
+[`docs/specs/iteration-survival-test.md`](./docs/specs/iteration-survival-test.md)
+§10 "Scope cuts" for full reasoning. L2 transparency, memory
+inspector, and salience scoring moved to V0.4 (they're features,
+not validation work).
+
+- [x] **V0.2.1** Iteration Survival Test (IST) benchmark design
       doc (`docs/specs/iteration-survival-test.md`). Specifies:
-      app templates, iteration prompts per template, metrics, scoring.
-- [ ] **V0.2.2** 5 app templates spec:
-      - Todo app
-      - E-commerce: simple product catalog + cart
-      - Dashboard: 3-chart admin dashboard
-      - Chatbot UI (frontend only, mock backend)
-      - SaaS landing page
-- [ ] **V0.2.3** 10 iteration prompts per template (50 total). Each
-      iteration adds ~1 feature.
-- [ ] **V0.2.4** IST runner: polycoder side. Loops through 50 iters,
-      records metrics.
-- [ ] **V0.2.5** IST runner: Lovable baseline (manual or scripted).
-- [ ] **V0.2.6** IST runner: Bolt baseline.
-- [ ] **V0.2.7** IST runner: single-Claude-via-Cursor baseline.
-- [ ] **V0.2.8** Metrics computation (`core/metrics/`):
-      - Test coverage maintenance rate (%)
-      - Cyclomatic complexity growth (per-file, per-iteration)
-      - Break frequency (iterations where the app didn't run)
-      - Time-to-recovery from a break
-- [ ] **V0.2.9** Metrics dashboard UI in workspace (V0.2 only — for
-      developer use; V1.0 hides behind a feature flag).
-- [ ] **V0.2.10** L2 transparency: expandable team-discussion view
-      with per-role I/O traces.
-- [ ] **V0.2.11** Salience scoring for memory updates (which
-      decisions/lessons should the Architect promote to "important"?)
-- [ ] **V0.2.12** Write up benchmark results in
-      `docs/benchmark-results-v0.2.md`. THIS IS THE PROJECT'S CORE
-      ARTIFACT.
-- [ ] **V0.2.13** v0.2 git tag.
+      thesis, 3 templates, 15 prompts (5 per template), 3 systems
+      (polycoder-full, polycoder-coder-only, Lovable), metrics
+      (BPR/SPR/TCMR/CCD/MAR), break+recovery definitions, $30
+      budget cap, reproducibility plan, honest limitations,
+      scope cuts, 4 open questions for V0.2.4. Done 2026-05-07.
+- [x] **V0.2.2** 3 app templates spec — `todo`, `dashboard`,
+      `landing`. Iter-1 seed prompts committed under
+      `benchmarks/ist/prompts/{todo,dashboard,landing}-iter01.md`.
+      Done 2026-05-07.
+- [x] **V0.2.3** Iteration prompts 2-5 per template, all 12 files
+      committed under `benchmarks/ist/prompts/<code>-iter<NN>.md`,
+      plus a `README.md` explaining the freeze rule. Wording
+      verbatim from IST §4. Done 2026-05-07.
+- [ ] **V0.2.4** IST runner: polycoder-full side. Loops through
+      15 iters across 3 templates, persists role I/O + workspace
+      to `benchmarks/ist/runs/polycoder-full/<template>/`.
+- [ ] **V0.2.5** IST runner: polycoder-coder-only control. Same
+      harness, single role. Resolves IST §12 open question 4.
+- [ ] **V0.2.6** IST runner: Lovable baseline. Manual operation
+      with pre-committed prompts; transcripts + zip exports
+      saved per iter.
+- [ ] **V0.2.7** Metrics automation:
+      - BPR (build pass rate): build script per template, exit
+        code → JSON.
+      - SPR (smoke pass rate): Playwright headless + golden
+        selector check.
+      - TCMR: detect test command, run, exit code.
+      - CCD: ESLint complexity (or escomplex fallback) → mean
+        complexity per iter.
+- [ ] **V0.2.8** Aggregation + plotting: read all per-iter
+      metric JSONs, emit `benchmarks/ist/results/raw.json` and
+      charts under `benchmarks/ist/results/charts/`.
+- [ ] **V0.2.9** Run all 45 iterations end-to-end. Hard stop if
+      budget cap ($30) hit. Pre-flight verify: env keys, Lovable
+      account, Playwright browser installed, http-server
+      available.
+- [ ] **V0.2.10** Manual Artifact Review (MAR) pass — score every
+      iter-5 artifact across all (system, template) cells.
+- [ ] **V0.2.11** Write up `docs/benchmark-results-v0.2.md` —
+      headline numbers, per-template detail, charts inline,
+      honest discussion of where polycoder did and didn't beat
+      baselines, threats to validity. **THIS IS THE PROJECT'S
+      CORE ARTIFACT.**
+- [ ] **V0.2.12** 30-second screen recording of polycoder-full
+      running one iter end-to-end. Embed in README.
+- [ ] **V0.2.13** v0.2.0 git tag + release notes that link to the
+      benchmark results doc.
 
 ---
 

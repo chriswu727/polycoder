@@ -9,6 +9,7 @@ turns out wrong, the spec is updated **before** the code.
 | [`providers.md`](./providers.md) | LLM provider abstraction, 5 V0 adapters, error taxonomy, streaming protocol, cost tracking | ~1500 src + ~1500 test |
 | [`tools.md`](./tools.md) | Tool framework, 10 V0 tools, permission model | ~1500 src + ~1500 test |
 | [`orchestrator.md`](./orchestrator.md) | Pipeline state machine, role invocation, conflict detection, re-prompt logic, memory updates | ~2000 src + ~1500 test |
+| [`iteration-survival-test.md`](./iteration-survival-test.md) | V0.2 benchmark: 3 templates × 5 iters × 3 systems, build/smoke/complexity metrics, budget caps, reproducibility plan | spec only — no V0.2 src yet |
 
 ## Reading order
 
