@@ -69,41 +69,71 @@ export const useWorkspaceStore = create<WorkspaceStoreState>((set, get) => ({
 
   async createWorkspace(name, root) {
     set({ loading: true, error: null })
-    const result = await window.polycoder.workspace.create({
-      name,
-      workspace_root: root,
-    })
-    if (!result.ok) {
-      set({ error: result.error, loading: false })
-      throw new Error(result.error)
+    try {
+      // Guard: when running in a plain browser tab (or if the
+      // Electron preload silently failed to load — sandbox/ESM
+      // mismatch caught one of these in V0.1.1), the IPC bridge
+      // is missing. Surface that as a real error rather than
+      // hanging on "Loading…" forever.
+      if (!window.polycoder?.workspace?.create) {
+        throw new Error(
+          'IPC bridge unavailable (window.polycoder.workspace.create is undefined). ' +
+            'Are you running this in a regular browser tab? Use the Electron app via `pnpm electron:dev`.',
+        )
+      }
+      const result = await window.polycoder.workspace.create({
+        name,
+        workspace_root: root,
+      })
+      if (!result.ok) {
+        set({ error: result.error, loading: false })
+        throw new Error(result.error)
+      }
+      await get().refreshWorkspaces()
+      await get().selectWorkspace(result.workspace.id)
+      set({ loading: false })
+      return result.workspace
+    } catch (e) {
+      set({
+        error: e instanceof Error ? e.message : String(e),
+        loading: false,
+      })
+      throw e
     }
-    await get().refreshWorkspaces()
-    await get().selectWorkspace(result.workspace.id)
-    set({ loading: false })
-    return result.workspace
   },
 
   async selectWorkspace(id) {
     set({ loading: true, error: null })
-    const hydrated = await window.polycoder.workspace.get({ id })
-    if (!hydrated) {
-      set({ error: 'workspace not found', loading: false })
-      return
+    try {
+      if (!window.polycoder?.workspace?.get) {
+        throw new Error('IPC bridge unavailable (window.polycoder.workspace.get is undefined).')
+      }
+      const hydrated = await window.polycoder.workspace.get({ id })
+      if (!hydrated) {
+        set({ error: 'workspace not found', loading: false })
+        return
+      }
+      // HydratedWorkspace = Workspace & { secrets, role_assignments }.
+      // Pull the workspace columns off the front for `current` so the
+      // store reflects the canonical Workspace shape.
+      const {
+        secrets: secretsList,
+        role_assignments,
+        ...workspace
+      } = hydrated
+      set({
+        current: workspace,
+        secrets: secretsList,
+        roleAssignments: role_assignments,
+        loading: false,
+      })
+    } catch (e) {
+      set({
+        error: e instanceof Error ? e.message : String(e),
+        loading: false,
+      })
+      throw e
     }
-    // HydratedWorkspace = Workspace & { secrets, role_assignments }.
-    // Pull the workspace columns off the front for `current` so the
-    // store reflects the canonical Workspace shape.
-    const {
-      secrets: secretsList,
-      role_assignments,
-      ...workspace
-    } = hydrated
-    set({
-      current: workspace,
-      secrets: secretsList,
-      roleAssignments: role_assignments,
-      loading: false,
-    })
   },
 
   async deleteWorkspace(id) {

@@ -21,8 +21,8 @@
     "test:ui": "vitest --ui",
     "dev": "vite",
     "build:renderer": "vite build",
-    "build:electron": "tsc -p electron/tsconfig.json",
-    "electron:dev": "concurrently -k -n vite,electron -c blue,green \"pnpm dev\" \"wait-on tcp:5173 && pnpm build:electron && electron dist/electron/main.js\"",
+    "build:electron": "tsc -p electron/tsconfig.json && tsc-alias -p electron/tsconfig.json && node -e \"const fs=require('fs'),f=['dist/electron/electron/main.js','dist/electron/electron/preload.js'];for(const p of f){const s=fs.readFileSync(p,'utf8');fs.writeFileSync(p,s.replace(/from '\\\\.\\\\.\\\\/electron'/g,\\\"from 'electron'\\\"))}\" && cp data/schema.sql dist/electron/data/schema.sql",
+    "electron:dev": "concurrently -k -n vite,electron -c blue,green \"pnpm dev\" \"wait-on tcp:5173 && pnpm build:electron && electron dist/electron/electron/main.js\"",
     "electron:build": "pnpm build:electron && pnpm build:renderer",
     "smoke": "tsx --env-file-if-exists=.env.local scripts/smoke.ts",
     "ist-run": "tsx --env-file-if-exists=.env.local scripts/ist-run.ts",
@@ -94,6 +94,7 @@
     }
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
     "@eslint/js": "^9.17.0",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "^4.0.0",
@@ -110,6 +111,7 @@
     "eslint": "^9.17.0",
     "prettier": "^3.4.2",
     "tailwindcss": "^4.2.4",
+    "tsc-alias": "^1.8.17",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.0",

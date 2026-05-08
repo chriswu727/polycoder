@@ -182,7 +182,12 @@ function createMainWindow(): BrowserWindow {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      // sandbox: false because preload.js is ESM (compiled with
+      // module: ESNext for the rest of the electron tsconfig).
+      // Electron's sandboxed preload requires CommonJS — making
+      // the preload CJS while keeping main ESM needs a separate
+      // tsconfig pass; deferred. Tracked as a V0.1.1 follow-up.
+      sandbox: false,
     },
   })
 
