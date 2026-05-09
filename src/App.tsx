@@ -133,11 +133,11 @@ export function App(): React.ReactElement {
     })()
   }, [refreshWorkspaces, selectWorkspace])
 
-  // Apply theme. Default light; later commits will surface a toggle
-  // somewhere in Settings or the title bar. The class is on <html>
-  // so the design tokens cascade everywhere.
+  // Apply theme. V3 design defaults to DARK (cosmic premium is the
+  // primary canvas; light is a polished mirror). Toggle UI deferred
+  // to V0.1.2. The class is on <html> so design tokens cascade.
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'light')
+    document.documentElement.setAttribute('data-theme', 'dark')
   }, [])
 
   // Mirror current workspace name into the OS window title.
@@ -148,29 +148,39 @@ export function App(): React.ReactElement {
   const showFirstRun = forceFirstRun || workspaces.length === 0
 
   return (
-    <div
-      style={{
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--bg)',
-      }}
-    >
-      {/* Slim drag-region strip — reserves space for the floating
-       * macOS traffic-light dots (we use titleBarStyle: 'hiddenInset')
-       * and lets the user drag the window from anywhere on this row.
-       * Buttons and inputs can opt back to non-drag with their own
-       * -webkit-app-region: no-drag if they ever live in this row. */}
+    <>
+      {/* V3 cosmic stage — fixed-position layered nebula gradient +
+       * a starfield background. They sit behind the entire app and
+       * the .pane-history / .pane-chat / .pane-preview surfaces use
+       * backdrop-filter blur to read as glass over them. The
+       * .cosmos-stars div drifts very slowly (suppressed by
+       * prefers-reduced-motion in design-tokens.css). */}
+      <div className="cosmos-stage" aria-hidden="true" />
+      <div className="cosmos-stars" aria-hidden="true" />
+
       <div
         style={{
-          height: 28,
-          flex: '0 0 auto',
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          ...({ WebkitAppRegion: 'drag' } as React.CSSProperties),
-          background: 'var(--bg)',
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'transparent',
+          position: 'relative',
+          zIndex: 1,
         }}
-      />
-      {showFirstRun ? (
+      >
+        {/* Slim drag-region strip — reserves space for the floating
+         * macOS traffic-light dots (titleBarStyle: 'hiddenInset')
+         * and lets the user drag the window from anywhere on this row. */}
+        <div
+          style={{
+            height: 28,
+            flex: '0 0 auto',
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+            ...({ WebkitAppRegion: 'drag' } as React.CSSProperties),
+            background: 'transparent',
+          }}
+        />
+        {showFirstRun ? (
         <FirstRun />
       ) : !current ? (
         <WorkspacePicker onCreate={() => setForceFirstRun(true)} />
@@ -193,12 +203,13 @@ export function App(): React.ReactElement {
           />
           <Settings />
         </div>
-      ) : (
-        <WorkspaceShell
-          onOpenSettings={() => setTab('settings')}
-          onCreateWorkspace={() => setForceFirstRun(true)}
-        />
-      )}
-    </div>
+        ) : (
+          <WorkspaceShell
+            onOpenSettings={() => setTab('settings')}
+            onCreateWorkspace={() => setForceFirstRun(true)}
+          />
+        )}
+      </div>
+    </>
   )
 }

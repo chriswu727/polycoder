@@ -15,7 +15,6 @@ import type { FC } from 'react'
 import { useIterationStore } from '@/stores/iteration.js'
 import type { CommunicatorPayload } from '@core/types/payloads/communicator.js'
 
-import { VerdictOrb, type Verdict } from './VerdictOrb.js'
 import { DisagreementCard, type DisagreementCardData } from './DisagreementCard.js'
 import {
   IconArrowRight,
@@ -25,6 +24,8 @@ import {
   IconLock,
   IconRefresh,
   ROLE_ICONS,
+  VerdictPlanet,
+  type Verdict,
 } from '@/components/icons.js'
 import type { RoleType } from '@core/types/role.js'
 
@@ -137,7 +138,7 @@ const VerdictBanner: FC<{ verdict: Verdict; summary: string; meta?: string }> = 
       boxShadow: 'var(--shadow-1)',
     }}
   >
-    <VerdictOrb verdict={verdict} size={44} />
+    <VerdictPlanet verdict={verdict} size={56} />
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
         <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em' }}>

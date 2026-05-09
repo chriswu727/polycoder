@@ -17,14 +17,51 @@ import { ChatBubble, ChatComposer, ChatPane } from './ChatPane.js'
 import { RolePipelineProgress } from '@/components/workspace/RolePipelineProgress.js'
 import { IterationResult } from '@/components/workspace/IterationResult.js'
 import { PreviewPane, type PreviewState } from '@/components/workspace/PreviewPane.js'
-import { VerdictOrb } from '@/components/workspace/VerdictOrb.js'
-import { IconSparkle, IconArrowRight, Mark } from '@/components/icons.js'
+import {
+  Chorus,
+  IconArrowRight,
+  Mark,
+  MissionDashboard,
+  MissionLanding,
+  MissionNotes,
+  MissionTodo,
+  VerdictPlanet,
+} from '@/components/icons.js'
+import type { FC as FCType } from 'react'
 import type { CommunicatorPayload } from '@core/types/payloads/communicator.js'
 
-const SAMPLE_PROMPTS: { label: string; hint: string }[] = [
-  { label: 'A simple to-do list', hint: 'Categories, due dates, persists locally.' },
-  { label: 'A SaaS landing page', hint: 'Hero, features, pricing, footer.' },
-  { label: 'A sales dashboard', hint: 'KPIs, table, mini chart.' },
+type SamplePrompt = {
+  key: 'todo' | 'landing' | 'dashboard' | 'notes'
+  label: string
+  hint: string
+  Glyph: FCType<{ size?: number | undefined }>
+}
+
+const SAMPLE_PROMPTS: SamplePrompt[] = [
+  {
+    key: 'todo',
+    label: 'A simple to-do list',
+    hint: 'Categories, due dates, saves automatically.',
+    Glyph: MissionTodo,
+  },
+  {
+    key: 'landing',
+    label: 'A SaaS landing page',
+    hint: 'Hero, features, pricing, footer.',
+    Glyph: MissionLanding,
+  },
+  {
+    key: 'dashboard',
+    label: 'A sales dashboard',
+    hint: 'KPIs, table, mini chart.',
+    Glyph: MissionDashboard,
+  },
+  {
+    key: 'notes',
+    label: 'A markdown notes app',
+    hint: 'Live preview, side-by-side editor.',
+    Glyph: MissionNotes,
+  },
 ]
 
 const VERDICT_BUBBLE_LABEL: Record<'green' | 'yellow' | 'red', string> = {
@@ -33,100 +70,133 @@ const VERDICT_BUBBLE_LABEL: Record<'green' | 'yellow' | 'red', string> = {
   red: 'Needs your input',
 }
 
-const IdleChat: FC<{ onSend: (text: string) => void }> = ({ onSend }) => (
-  // V2 hero: bigger brand mark with a warm accent halo, headline
-  // that asks rather than waits, prompt cards lift on hover and
-  // flip their icon chip to filled accent (handled by .pc-prompt-card
-  // CSS in design-tokens.css).
-  <div style={{ paddingTop: 28 }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-      <div className="brand-halo">
-        <Mark size={36} />
-      </div>
-      <div style={{ flex: 1 }}>
-        <div
+const IdleChat: FC<{ onSend: (text: string) => void }> = ({ onSend }) => {
+  // V3 cosmic hero: brand mark + wordmark + chorus eyebrow + a
+  // 56px asking-headline, then 4 mission-glyph cards. Picks 3
+  // out of 4 sample prompts so the layout breathes.
+  const visiblePrompts = SAMPLE_PROMPTS.slice(0, 3)
+  return (
+    <div style={{ paddingTop: 36, maxWidth: 540 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          marginBottom: 32,
+        }}
+      >
+        <Mark size={22} />
+        <span className="pc-wordmark" style={{ fontSize: 17, lineHeight: 1 }}>
+          polycoder
+        </span>
+        <span
           style={{
-            fontSize: 24,
-            fontWeight: 600,
-            letterSpacing: '-0.018em',
-            lineHeight: 1.15,
+            width: 1,
+            height: 12,
+            background: 'var(--border)',
+            margin: '0 2px',
+          }}
+        />
+        <span
+          className="pc-mono"
+          style={{ fontSize: 10.5, color: 'var(--ink-3)' }}
+        >
+          today
+        </span>
+        <span style={{ flex: 1 }} />
+        <span
+          className="pc-mono"
+          style={{
+            fontSize: 10,
+            color: 'var(--ink-3)',
+            letterSpacing: '0.04em',
           }}
         >
-          What should we build today?
-        </div>
-        <div className="pc-eyebrow" style={{ marginTop: 6 }}>
-          polycoder · 8 voices
-        </div>
+          /{new Date().getFullYear()}
+        </span>
       </div>
-    </div>
-    <div
-      style={{
-        fontSize: 13,
-        color: 'var(--ink-2)',
-        marginBottom: 22,
-        lineHeight: 1.55,
-        maxWidth: 460,
-      }}
-    >
-      Describe it in your own words. Your team picks it up from there — the
-      more detail you give, the closer the first pass lands.
-    </div>
+      <div className="pc-bracket-eyebrow" style={{ marginBottom: 14 }}>
+        <span>[</span>
+        <span>8 roles · one team</span>
+        <span>]</span>
+      </div>
+      <div
+        style={{
+          fontSize: 56,
+          fontWeight: 700,
+          letterSpacing: '-0.030em',
+          lineHeight: 1.0,
+          marginBottom: 16,
+          color: 'var(--ink)',
+        }}
+      >
+        What should we make today?
+      </div>
+      <div
+        style={{
+          fontSize: 14,
+          color: 'var(--ink-2)',
+          marginBottom: 28,
+          lineHeight: 1.55,
+        }}
+      >
+        Tell us in plain words — no code needed. Your team of 8 will figure
+        out how to build it.
+      </div>
 
-    <div className="pc-eyebrow" style={{ marginBottom: 10 }}>
-      Or start from one of these:
+      <div className="pc-eyebrow" style={{ marginBottom: 10 }}>
+        Or start from one of these:
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {visiblePrompts.map((s) => {
+          const Glyph = s.Glyph
+          return (
+            <button
+              key={s.key}
+              onClick={() => onSend(s.label)}
+              className="pc-prompt-card"
+            >
+              <div
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 6,
+                  background: 'var(--surface-2)',
+                  color: 'var(--ink-2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flex: '0 0 auto',
+                  border: '1px solid var(--border)',
+                }}
+              >
+                <Glyph size={14} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
+                  {s.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: 11.5,
+                    color: 'var(--ink-3)',
+                    marginTop: 1,
+                  }}
+                >
+                  {s.hint}
+                </div>
+              </div>
+              <IconArrowRight
+                size={12}
+                style={{ color: 'var(--ink-3)', flex: '0 0 auto' }}
+              />
+            </button>
+          )
+        })}
+      </div>
     </div>
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {SAMPLE_PROMPTS.map((s, i) => (
-        <button
-          key={i}
-          onClick={() => onSend(s.label)}
-          className="pc-prompt-card"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '13px 14px',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            boxShadow: 'var(--shadow-1)',
-            textAlign: 'left',
-            cursor: 'pointer',
-            font: 'inherit',
-            color: 'inherit',
-            transition:
-              'border-color 160ms ease, background 160ms ease, transform 160ms ease',
-          }}
-        >
-          <div
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 7,
-              background: 'var(--accent-soft)',
-              color: 'var(--accent)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flex: '0 0 auto',
-            }}
-          >
-            <IconSparkle size={13} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
-              {s.label}
-            </div>
-            <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-              {s.hint}
-            </div>
-          </div>
-          <IconArrowRight size={11} style={{ color: 'var(--ink-3)' }} />
-        </button>
-      ))}
-    </div>
-  </div>
-)
+  )
+}
 
 const ChatBody: FC = () => {
   const status = useIterationStore((s) => s.status)
@@ -153,27 +223,19 @@ const ChatBody: FC = () => {
         <div
           style={{
             display: 'flex',
-            gap: 8,
+            gap: 10,
             marginBottom: 12,
             alignItems: 'center',
+            padding: '10px 12px',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 10,
           }}
         >
-          <div
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: 6,
-              background: 'var(--accent-soft)',
-              color: 'var(--accent)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <IconSparkle size={11} />
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-            Your team is on it. <span className="pc-mono" style={{ color: 'var(--ink-3)' }}>5-15 minutes typical.</span>
+          <Chorus pulse size={6} />
+          <div style={{ flex: 1, fontSize: 12.5, color: 'var(--ink-2)' }}>
+            Your team is talking it through.{' '}
+            <span style={{ color: 'var(--ink-3)' }}>5-15 minutes typical.</span>
           </div>
         </div>
       ) : null}
@@ -213,7 +275,7 @@ const CompletedTeamBubble: FC<{
       meta={`iter ${String(iterationNumber ?? 0).padStart(2, '0')} · ${label}`}
     >
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
-        <VerdictOrb verdict={verdict} size={22} />
+        <VerdictPlanet verdict={verdict} size={28} />
         <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
       </div>
       {payload?.user_facing_text ? (

@@ -1,9 +1,8 @@
-@import 'tailwindcss';
-@import './styles/design-tokens.css';
-
-/* Geist + Geist Mono via Google Fonts CDN.
- * Loaded once at app boot; cached after that. The design relies on
- * these specifically — fallback stack (-apple-system, system-ui)
- * is a safety net if the CDN is unreachable.
+/* @import order matters: external @url() must precede every other
+ * statement including bundled imports. Geist + Geist Mono via Google
+ * Fonts CDN — loaded once at app boot, cached. Fallback stack
+ * (-apple-system, system-ui) covers offline.
  */
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+@import './styles/design-tokens.css';

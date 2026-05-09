@@ -8,6 +8,7 @@
 // avatars in the disagreement card and progress timeline are
 // visually identifiable.
 
+import { useId } from 'react'
 import type { CSSProperties, FC, ReactNode } from 'react'
 import type { RoleType } from '@core/types/role.js'
 
@@ -44,18 +45,245 @@ export type IconProps = {
   color?: string | undefined
 }
 
-// Brand mark — three nested squares, suggesting "many roles, one output".
-export const Mark: FC<IconProps> = ({ size = 22, color }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    style={{ display: 'block', color: color ?? 'currentColor' }}
-  >
-    <rect x="3" y="3" width="14" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth={1.6} opacity={0.35} />
-    <rect x="5" y="5" width="14" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth={1.6} opacity={0.6} />
-    <rect x="7" y="7" width="14" height="14" rx="2.5" fill="currentColor" stroke="currentColor" strokeWidth={1.6} />
-    <circle cx={14} cy={14} r={2} fill="var(--bg, #fff)" />
+// Brand mark — V3 cosmic octahedron / crystal. Internal facets +
+// specular highlight + radial gradient body. Reads at 16px,
+// majestic at 64px. The .pc-mark-halo class on the wrapper adds a
+// slow-rotating accent halo (suppressed by prefers-reduced-motion).
+//
+// Uses React.useId() so multiple Mark instances on a page get
+// unique gradient IDs (otherwise they'd cross-talk).
+export const Mark: FC<IconProps & { animated?: boolean | undefined }> = ({
+  size = 24,
+  color,
+  animated = true,
+}) => {
+  const rawId = useId()
+  const id = rawId.replace(/[^a-z0-9]/gi, '')
+  return (
+    <span
+      className={animated ? 'pc-mark-halo' : ''}
+      style={{
+        width: size,
+        height: size,
+        display: 'inline-flex',
+        color: color ?? 'currentColor',
+      }}
+    >
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 32 32"
+        style={{ position: 'relative', zIndex: 1 }}
+      >
+        <defs>
+          <radialGradient id={`mc-${id}`} cx="40%" cy="35%" r="65%">
+            <stop offset="0%" stopColor="oklch(0.95 0.10 220)" stopOpacity={0.95} />
+            <stop offset="50%" stopColor="oklch(0.68 0.18 250)" stopOpacity={0.85} />
+            <stop offset="100%" stopColor="oklch(0.42 0.18 285)" stopOpacity={0.95} />
+          </radialGradient>
+          <linearGradient id={`me-${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="oklch(0.92 0.14 200)" stopOpacity={0.95} />
+            <stop offset="100%" stopColor="oklch(0.62 0.22 290)" stopOpacity={0.95} />
+          </linearGradient>
+        </defs>
+        {/* Outer crystal silhouette — diamond / octahedron */}
+        <path
+          d="M16 3 L28 16 L16 29 L4 16 Z"
+          fill={`url(#mc-${id})`}
+          stroke={`url(#me-${id})`}
+          strokeWidth={1.2}
+          opacity={0.92}
+        />
+        {/* Internal facets — triangles for crystalline depth */}
+        <path d="M16 3 L16 29" stroke="oklch(0.95 0.08 220 / 0.4)" strokeWidth={0.8} />
+        <path d="M4 16 L28 16" stroke="oklch(0.95 0.08 220 / 0.4)" strokeWidth={0.8} />
+        <path d="M16 3 L4 16 L16 16 Z" fill="oklch(0.95 0.10 215 / 0.18)" />
+        <path d="M16 3 L28 16 L16 16 Z" fill="oklch(0.42 0.18 285 / 0.40)" />
+        <path d="M16 16 L4 16 L16 29 Z" fill="oklch(0.42 0.18 285 / 0.30)" />
+        <path d="M16 16 L28 16 L16 29 Z" fill="oklch(0.95 0.10 215 / 0.10)" />
+        {/* Specular highlight */}
+        <path
+          d="M16 5.5 L11 13"
+          stroke="oklch(0.99 0.02 215)"
+          strokeWidth={0.9}
+          opacity={0.65}
+          strokeLinecap="round"
+        />
+        {/* Core nucleus */}
+        <circle cx={16} cy={16} r={2.2} fill="oklch(0.96 0.12 215)" opacity={0.95} />
+        <circle cx={16} cy={16} r={1.0} fill="white" />
+      </svg>
+    </span>
+  )
+}
+
+// 8-bead chorus identity strip. Each bead = one of the 8 roles in
+// its hue. Used in InProgressChat (above the user prompt) and the
+// composer header to make "your team" visible. `pulse=true` makes
+// each bead breathe (suppressed by prefers-reduced-motion).
+const CHORUS_HUES = [220, 280, 175, 30, 0, 200, 145, 50]
+export const Chorus: FC<{ pulse?: boolean | undefined; size?: number | undefined }> = ({
+  pulse = false,
+  size = 6,
+}) => (
+  <span className="pc-chorus" data-pulse={pulse ? 'true' : 'false'}>
+    {CHORUS_HUES.map((hue, i) => (
+      <span
+        key={i}
+        style={{
+          width: size,
+          height: size,
+          background: `oklch(0.78 0.16 ${hue})`,
+          color: `oklch(0.78 0.16 ${hue})`,
+        }}
+      />
+    ))}
+  </span>
+)
+
+// Verdict planet — V3 spherical illusion. Replaces the V2 flat
+// VerdictOrb with a Genshin-grade elemental orb: radial body
+// gradient + atmospheric ring + surface texture + specular
+// highlight + a verdict-specific symbol etched on the surface.
+export type Verdict = 'green' | 'yellow' | 'red'
+export const VerdictPlanet: FC<{ verdict: Verdict; size?: number | undefined }> = ({
+  verdict,
+  size = 56,
+}) => {
+  const rawId = useId()
+  const id = rawId.replace(/[^a-z0-9]/gi, '')
+  const palette =
+    verdict === 'green'
+      ? {
+          core: 'oklch(0.92 0.16 145)',
+          mid: 'oklch(0.62 0.18 150)',
+          deep: 'oklch(0.30 0.13 155)',
+          atm: 'oklch(0.78 0.18 145)',
+          tex: 'oklch(0.40 0.13 150)',
+        }
+      : verdict === 'yellow'
+        ? {
+            core: 'oklch(0.96 0.14 90)',
+            mid: 'oklch(0.78 0.18 70)',
+            deep: 'oklch(0.42 0.16 55)',
+            atm: 'oklch(0.85 0.18 75)',
+            tex: 'oklch(0.55 0.18 60)',
+          }
+        : {
+            core: 'oklch(0.96 0.14 60)',
+            mid: 'oklch(0.72 0.22 35)',
+            deep: 'oklch(0.32 0.18 25)',
+            atm: 'oklch(0.78 0.22 30)',
+            tex: 'oklch(0.50 0.22 30)',
+          }
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      style={{ display: 'block', flex: '0 0 auto' }}
+    >
+      <defs>
+        <radialGradient id={`p-body-${id}`} cx="35%" cy="32%" r="72%">
+          <stop offset="0%" stopColor={palette.core} stopOpacity={1} />
+          <stop offset="35%" stopColor={palette.mid} stopOpacity={1} />
+          <stop offset="100%" stopColor={palette.deep} stopOpacity={1} />
+        </radialGradient>
+        <radialGradient id={`p-atm-${id}`} cx="50%" cy="50%" r="50%">
+          <stop offset="65%" stopColor={palette.atm} stopOpacity={0} />
+          <stop offset="80%" stopColor={palette.atm} stopOpacity={0.5} />
+          <stop offset="100%" stopColor={palette.atm} stopOpacity={0} />
+        </radialGradient>
+        <radialGradient id={`p-spec-${id}`} cx="32%" cy="28%" r="22%">
+          <stop offset="0%" stopColor="white" stopOpacity={0.85} />
+          <stop offset="100%" stopColor="white" stopOpacity={0} />
+        </radialGradient>
+        <radialGradient id={`p-tex-${id}`} cx="60%" cy="65%" r="45%">
+          <stop offset="0%" stopColor={palette.tex} stopOpacity={0.6} />
+          <stop offset="100%" stopColor={palette.tex} stopOpacity={0} />
+        </radialGradient>
+        <clipPath id={`p-clip-${id}`}>
+          <circle cx={32} cy={32} r={24} />
+        </clipPath>
+      </defs>
+      <circle cx={32} cy={32} r={30} fill={`url(#p-atm-${id})`} />
+      <circle cx={32} cy={32} r={24} fill={`url(#p-body-${id})`} />
+      <g clipPath={`url(#p-clip-${id})`}>
+        <ellipse cx={42} cy={42} rx={14} ry={9} fill={`url(#p-tex-${id})`} opacity={0.7} />
+        <ellipse cx={22} cy={20} rx={9} ry={4} fill={palette.tex} opacity={0.18} />
+        <ellipse cx={38} cy={24} rx={6} ry={2.5} fill={palette.tex} opacity={0.22} />
+        {verdict === 'red' ? (
+          <>
+            <ellipse cx={28} cy={38} rx={5} ry={2.5} fill="oklch(0.96 0.14 60)" opacity={0.45} />
+            <ellipse cx={40} cy={46} rx={4} ry={2} fill="oklch(0.96 0.14 60)" opacity={0.35} />
+          </>
+        ) : null}
+      </g>
+      <ellipse cx={24} cy={22} rx={9} ry={5} fill={`url(#p-spec-${id})`} />
+      <circle cx={32} cy={32} r={24} fill="none" stroke="oklch(0 0 0 / 0.35)" strokeWidth={1.2} />
+      <g opacity={0.9}>
+        {verdict === 'green' ? (
+          <path
+            d="M22 32 L29 39 L42 24"
+            stroke="white"
+            strokeWidth={3}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ filter: 'drop-shadow(0 0 4px oklch(0.95 0.18 145))' }}
+          />
+        ) : null}
+        {verdict === 'yellow' ? (
+          <g style={{ filter: 'drop-shadow(0 0 4px oklch(0.95 0.18 80))' }}>
+            <path d="M32 19 L32 35" stroke="white" strokeWidth={3} strokeLinecap="round" />
+            <circle cx={32} cy={42} r={2.2} fill="white" />
+          </g>
+        ) : null}
+        {verdict === 'red' ? (
+          <g style={{ filter: 'drop-shadow(0 0 4px oklch(0.95 0.18 30))' }}>
+            <path d="M24 24 L40 40" stroke="white" strokeWidth={3} strokeLinecap="round" />
+            <path d="M40 24 L24 40" stroke="white" strokeWidth={3} strokeLinecap="round" />
+          </g>
+        ) : null}
+      </g>
+    </svg>
+  )
+}
+
+// Mission glyphs — line-art motifs for the sample-prompt cards on
+// the idle screen. One per prompt category, slightly luminous in
+// dark mode via currentColor.
+export const MissionTodo: FC<IconProps> = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2.5" y="3" width="3" height="3" rx="0.6" />
+    <path d="M3 4.5 L4 5.3 L5 3.8" />
+    <path d="M7.5 4.5 L13 4.5" />
+    <rect x="2.5" y="8" width="3" height="3" rx="0.6" />
+    <path d="M7.5 9.5 L13 9.5" />
+    <rect x="2.5" y="13" width="3" height="0.5" rx="0.2" fill="currentColor" />
+  </svg>
+)
+export const MissionLanding: FC<IconProps> = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2.5" width="12" height="11" rx="1.2" />
+    <path d="M2 5.5 L14 5.5" />
+    <circle cx="3.5" cy="4" r="0.4" fill="currentColor" />
+    <path d="M4.5 7.5 L11.5 7.5 M4.5 9.5 L9.5 9.5" />
+    <rect x="4.5" y="11" width="3" height="1.5" rx="0.4" />
+  </svg>
+)
+export const MissionDashboard: FC<IconProps> = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 13 L14 13" />
+    <path d="M2 2.5 L2 13" />
+    <path d="M3.5 11 L3.5 8.5 M6 11 L6 5.5 M8.5 11 L8.5 7 M11 11 L11 4.5 M13.5 11 L13.5 6.5" />
+  </svg>
+)
+export const MissionNotes: FC<IconProps> = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2.5" y="2.5" width="11" height="11" rx="1.2" />
+    <path d="M8 2.5 L8 13.5" />
+    <path d="M3.5 5.5 L6.5 5.5 M3.5 8 L6 8 M9.5 5.5 L12.5 5.5 M9.5 8 L12 8 M9.5 10.5 L12.5 10.5" />
   </svg>
 )
 
