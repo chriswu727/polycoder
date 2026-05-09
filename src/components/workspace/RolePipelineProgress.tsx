@@ -12,6 +12,7 @@ import type { FC } from 'react'
 import type { RoleType } from '@core/types/role.js'
 import { useIterationStore } from '@/stores/iteration.js'
 import { ROLE_ICONS, IconCheck, IconX, IconSparkle, IconStop } from '@/components/icons.js'
+import { ROLE_LABEL, hueFor, roleSwatches } from '@/components/role-palette.js'
 
 const ROLE_ORDER: RoleType[] = [
   'translator',
@@ -23,17 +24,6 @@ const ROLE_ORDER: RoleType[] = [
   'test_runner',
   'communicator',
 ]
-
-const ROLE_LABEL: Record<RoleType, string> = {
-  translator: 'Understanding your idea',
-  designer: 'Sketching the layout',
-  architect: 'Planning the structure',
-  coder: 'Writing your app',
-  adversary: 'Double-checking',
-  long_term_critic: 'Reviewing',
-  test_runner: 'Testing',
-  communicator: 'Wrapping up',
-}
 
 type RowStatus = 'idle' | 'running' | 'completed' | 'failed'
 
@@ -49,6 +39,32 @@ const TimelineRow: FC<{
   const isFailed = status === 'failed'
   const isPending = status === 'idle'
 
+  const hue = hueFor(role)
+  const swatch = roleSwatches(hue)
+  // V2 design: each role's identity color leaks into the regular run.
+  // Avatar palette switches by status; failed always uses the system
+  // red so it stays unambiguous.
+  let avatarBg: string
+  let avatarFg: string
+  let avatarBorder: string
+  if (isDone) {
+    avatarBg = swatch.soft
+    avatarFg = swatch.base
+    avatarBorder = swatch.border
+  } else if (isFailed) {
+    avatarBg = 'var(--red-soft)'
+    avatarFg = 'var(--red)'
+    avatarBorder = 'oklch(from var(--red) l c h / 0.45)'
+  } else if (isRunning) {
+    avatarBg = swatch.soft
+    avatarFg = swatch.base
+    avatarBorder = swatch.base
+  } else {
+    avatarBg = 'var(--surface-2)'
+    avatarFg = 'var(--ink-3)'
+    avatarBorder = 'var(--border)'
+  }
+
   return (
     <div style={{ display: 'flex', gap: 12, position: 'relative', paddingBottom: isLast ? 0 : 14 }}>
       {!isLast ? (
@@ -59,7 +75,7 @@ const TimelineRow: FC<{
             top: 28,
             bottom: 0,
             width: 1,
-            background: isDone ? 'var(--border-strong)' : 'var(--hairline)',
+            background: isDone ? swatch.border : 'var(--hairline)',
           }}
         />
       ) : null}
@@ -70,32 +86,14 @@ const TimelineRow: FC<{
             width: 28,
             height: 28,
             borderRadius: 8,
-            background: isDone
-              ? 'var(--ink)'
-              : isFailed
-                ? 'var(--red)'
-                : isRunning
-                  ? 'var(--surface)'
-                  : 'var(--surface-2)',
-            color: isDone
-              ? 'var(--bg)'
-              : isFailed
-                ? '#fff'
-                : isRunning
-                  ? 'var(--accent)'
-                  : 'var(--ink-3)',
-            border:
-              '1px solid ' +
-              (isDone
-                ? 'var(--ink)'
-                : isFailed
-                  ? 'var(--red)'
-                  : isRunning
-                    ? 'var(--accent)'
-                    : 'var(--border)'),
+            background: avatarBg,
+            color: avatarFg,
+            border: '1px solid ' + avatarBorder,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            transition:
+              'background 200ms ease, color 200ms ease, border-color 200ms ease',
           }}
         >
           {isDone ? <IconCheck size={14} /> : isFailed ? <IconX size={14} /> : <Icon size={14} />}
@@ -106,7 +104,7 @@ const TimelineRow: FC<{
               position: 'absolute',
               inset: -2,
               borderRadius: 10,
-              border: '1.5px solid var(--accent)',
+              border: '1.5px solid ' + swatch.base,
               animation: 'pc-pulse-ring 1.6s ease-out infinite',
               pointerEvents: 'none',
             }}
@@ -136,7 +134,7 @@ const TimelineRow: FC<{
             className="pc-mono"
             style={{ fontSize: 10.5, color: 'var(--ink-3)', flex: '0 0 auto' }}
           >
-            {isRunning ? <span style={{ color: 'var(--accent)' }}>· running</span> : null}
+            {isRunning ? <span style={{ color: swatch.base }}>· running</span> : null}
             {isPending ? <span>queued</span> : null}
             {isFailed ? <span style={{ color: 'var(--red)' }}>failed</span> : null}
           </div>
@@ -171,7 +169,7 @@ const TimelineRow: FC<{
                 left: 0,
                 width: '40%',
                 height: '100%',
-                background: 'var(--accent)',
+                background: swatch.base,
                 animation: 'pc-progress-indeterminate 1.6s ease-in-out infinite',
               }}
             />

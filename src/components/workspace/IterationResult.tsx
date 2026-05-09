@@ -107,7 +107,23 @@ const VerdictBanner: FC<{ verdict: Verdict; summary: string; meta?: string }> = 
   verdict,
   summary,
   meta,
-}) => (
+}) => {
+  // V2 design: each verdict carries a soft tonal wash so the
+  // "after iteration" feeling shifts with the result. Border picks
+  // up the same family.
+  const borderColor =
+    verdict === 'green'
+      ? 'oklch(from var(--green) l c h / 0.25)'
+      : verdict === 'yellow'
+        ? 'oklch(from var(--amber) l c h / 0.30)'
+        : 'oklch(from var(--red) l c h / 0.25)'
+  const tintGradient =
+    verdict === 'green'
+      ? 'linear-gradient(135deg, var(--green-tint), transparent 55%)'
+      : verdict === 'yellow'
+        ? 'linear-gradient(135deg, var(--amber-tint), transparent 55%)'
+        : 'linear-gradient(135deg, var(--red-tint), transparent 55%)'
+  return (
   <div
     style={{
       display: 'flex',
@@ -115,7 +131,8 @@ const VerdictBanner: FC<{ verdict: Verdict; summary: string; meta?: string }> = 
       alignItems: 'flex-start',
       padding: '16px 18px',
       background: 'var(--surface)',
-      border: '1px solid var(--border)',
+      backgroundImage: tintGradient,
+      border: `1px solid ${borderColor}`,
       borderRadius: 12,
       boxShadow: 'var(--shadow-1)',
     }}
@@ -145,7 +162,8 @@ const VerdictBanner: FC<{ verdict: Verdict; summary: string; meta?: string }> = 
       </div>
     </div>
   </div>
-)
+  )
+}
 
 const FilesChangedSection: FC<{ files: string[] }> = ({ files }) => {
   const [open, setOpen] = useState(false)

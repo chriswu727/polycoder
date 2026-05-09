@@ -21,9 +21,8 @@
 import { useState } from 'react'
 import type { FC } from 'react'
 
-import type { RoleType } from '@core/types/role.js'
-import { ROLE_ICONS } from '@/components/icons.js'
-import { IconChevronDown } from '@/components/icons.js'
+import { ROLE_ICONS, IconChevronDown } from '@/components/icons.js'
+import { hueFor, shortFor } from '@/components/role-palette.js'
 
 // Real Communicator stance shape. We accept either the schema's
 // `model_label` or a missing one; some older traces don't have it.
@@ -40,38 +39,6 @@ export type DisagreementCardData = {
   stances: Stance[]
   user_action_required: string
   default_if_user_skips: string
-}
-
-// Each role gets a distinct quiet hue so stances are scannable.
-// Low-chroma intentionally — never feels like a warning banner.
-const ROLE_HUE: Record<RoleType, number> = {
-  translator: 220,
-  designer: 280,
-  architect: 175,
-  coder: 30,
-  adversary: 0,
-  long_term_critic: 200,
-  test_runner: 145,
-  communicator: 50,
-}
-
-const ROLE_SHORT: Record<RoleType, string> = {
-  translator: 'understanding',
-  designer: 'sketching',
-  architect: 'planning',
-  coder: 'writing',
-  adversary: 'double-checking',
-  long_term_critic: 'reviewing',
-  test_runner: 'testing',
-  communicator: 'wrapping up',
-}
-
-function hueFor(role: string): number {
-  return (ROLE_HUE as Record<string, number | undefined>)[role] ?? 220
-}
-
-function shortFor(role: string): string {
-  return (ROLE_SHORT as Record<string, string | undefined>)[role] ?? role
 }
 
 export const RoleAvatar: FC<{ role: string; size?: number }> = ({ role, size = 28 }) => {

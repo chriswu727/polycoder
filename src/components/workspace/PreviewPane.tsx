@@ -21,22 +21,9 @@ const HEADER_BG: React.CSSProperties = {
 }
 
 export const EmptyPreview: FC<{ message: string; sub: string }> = ({ message, sub }) => (
-  <div
-    style={{
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      padding: 32,
-      textAlign: 'center',
-      background:
-        'repeating-linear-gradient(135deg, var(--surface-sunk), var(--surface-sunk) 10px, var(--bg-2) 10px, var(--bg-2) 11px)',
-      color: 'var(--ink-3)',
-    }}
-  >
+  // .empty-preview class lives in design-tokens.css — soft warm wash
+  // with a radial accent halo, no construction-zone diagonal stripes.
+  <div className="empty-preview">
     <div
       style={{
         width: 72,
@@ -46,8 +33,8 @@ export const EmptyPreview: FC<{ message: string; sub: string }> = ({ message, su
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'var(--bg)',
-        marginBottom: 8,
+        background: 'var(--surface)',
+        marginBottom: 4,
       }}
     >
       <svg width="32" height="32" viewBox="0 0 24 24">
@@ -68,9 +55,7 @@ export const EmptyPreview: FC<{ message: string; sub: string }> = ({ message, su
     <div className="pc-mono" style={{ fontSize: 12, color: 'var(--ink-2)' }}>
       {message}
     </div>
-    <div style={{ fontSize: 12, color: 'var(--ink-3)', maxWidth: 280 }}>
-      {sub}
-    </div>
+    <div style={{ fontSize: 12, color: 'var(--ink-3)', maxWidth: 280 }}>{sub}</div>
   </div>
 )
 

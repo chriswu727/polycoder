@@ -34,58 +34,90 @@ const VERDICT_BUBBLE_LABEL: Record<'green' | 'yellow' | 'red', string> = {
 }
 
 const IdleChat: FC<{ onSend: (text: string) => void }> = ({ onSend }) => (
-  <div style={{ paddingTop: 24 }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-      <Mark size={20} />
-      <div className="pc-eyebrow">today</div>
-    </div>
-    <div
-      style={{
-        fontSize: 22,
-        fontWeight: 600,
-        letterSpacing: '-0.015em',
-        marginBottom: 4,
-      }}
-    >
-      Ready when you are
+  // V2 hero: bigger brand mark with a warm accent halo, headline
+  // that asks rather than waits, prompt cards lift on hover and
+  // flip their icon chip to filled accent (handled by .pc-prompt-card
+  // CSS in design-tokens.css).
+  <div style={{ paddingTop: 28 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+      <div className="brand-halo">
+        <Mark size={36} />
+      </div>
+      <div style={{ flex: 1 }}>
+        <div
+          style={{
+            fontSize: 24,
+            fontWeight: 600,
+            letterSpacing: '-0.018em',
+            lineHeight: 1.15,
+          }}
+        >
+          What should we build today?
+        </div>
+        <div className="pc-eyebrow" style={{ marginTop: 6 }}>
+          polycoder · 8 voices
+        </div>
+      </div>
     </div>
     <div
       style={{
         fontSize: 13,
         color: 'var(--ink-2)',
         marginBottom: 22,
-        lineHeight: 1.5,
+        lineHeight: 1.55,
+        maxWidth: 460,
       }}
     >
-      Describe what you'd like to build. Your team will take it from there.
+      Describe it in your own words. Your team picks it up from there — the
+      more detail you give, the closer the first pass lands.
     </div>
 
-    <div className="pc-eyebrow" style={{ marginBottom: 8 }}>
-      Or try one of these:
+    <div className="pc-eyebrow" style={{ marginBottom: 10 }}>
+      Or start from one of these:
     </div>
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {SAMPLE_PROMPTS.map((s, i) => (
         <button
           key={i}
           onClick={() => onSend(s.label)}
-          className="pc-btn"
-          data-variant="ghost"
+          className="pc-prompt-card"
           style={{
-            justifyContent: 'flex-start',
-            gap: 10,
-            padding: '11px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '13px 14px',
             background: 'var(--surface)',
             border: '1px solid var(--border)',
+            borderRadius: 10,
             boxShadow: 'var(--shadow-1)',
             textAlign: 'left',
+            cursor: 'pointer',
+            font: 'inherit',
+            color: 'inherit',
+            transition:
+              'border-color 160ms ease, background 160ms ease, transform 160ms ease',
           }}
         >
-          <IconSparkle size={13} style={{ color: 'var(--accent)' }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ink)' }}>
+          <div
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 7,
+              background: 'var(--accent-soft)',
+              color: 'var(--accent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flex: '0 0 auto',
+            }}
+          >
+            <IconSparkle size={13} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
               {s.label}
             </div>
-            <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 1 }}>
+            <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
               {s.hint}
             </div>
           </div>

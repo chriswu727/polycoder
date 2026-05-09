@@ -31,6 +31,16 @@ const VerdictDot: FC<{ v: IterationRow['traffic_light'] | undefined; size?: numb
         : v === 'red'
           ? 'var(--red)'
           : 'var(--ink-3)'
+  // V2 design: a soft 2px halo of the verdict tone wraps the dot
+  // so it's scannable at-a-glance from the sidebar.
+  const haloColor =
+    v === 'green'
+      ? 'var(--green-soft)'
+      : v === 'yellow'
+        ? 'var(--amber-soft)'
+        : v === 'red'
+          ? 'var(--red-soft)'
+          : 'transparent'
   return (
     <span
       style={{
@@ -40,6 +50,7 @@ const VerdictDot: FC<{ v: IterationRow['traffic_light'] | undefined; size?: numb
         background: color,
         display: 'inline-block',
         flex: '0 0 auto',
+        boxShadow: v ? `0 0 0 2px ${haloColor}` : 'none',
       }}
     />
   )
@@ -241,12 +252,13 @@ export const Sidebar: FC<{
               <button
                 key={h.id}
                 onClick={() => onSelectIter(h.id)}
+                className={active ? 'ws-active' : undefined}
                 style={{
                   width: '100%',
                   padding: '10px 10px',
                   borderRadius: 8,
-                  background: active ? 'var(--surface)' : 'transparent',
-                  border: '1px solid ' + (active ? 'var(--border)' : 'transparent'),
+                  background: active ? undefined : 'transparent',
+                  border: active ? undefined : '1px solid transparent',
                   boxShadow: active ? 'var(--shadow-1)' : 'none',
                   textAlign: 'left',
                   display: 'flex',

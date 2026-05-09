@@ -6,30 +6,41 @@
 
 :root,
 [data-theme="light"] {
-  --bg:           oklch(0.985 0.004 80);
-  --bg-2:         oklch(0.965 0.005 80);
-  --surface:      oklch(1 0 0);
-  --surface-2:    oklch(0.975 0.005 80);
-  --surface-sunk: oklch(0.955 0.006 80);
-  --border:       oklch(0.91 0.006 80);
-  --border-strong:oklch(0.84 0.008 80);
-  --hairline:     oklch(0.93 0.005 80 / 0.7);
+  /* Warm-tinted neutrals — base hue 50 (cream) instead of 80 (grey-yellow) */
+  --bg:           oklch(0.984 0.008 60);
+  --bg-2:         oklch(0.965 0.011 55);
+  --surface:      oklch(0.998 0.004 60);
+  --surface-2:    oklch(0.972 0.010 55);
+  --surface-sunk: oklch(0.952 0.013 50);
+  --border:       oklch(0.905 0.012 55);
+  --border-strong:oklch(0.82 0.015 50);
+  --hairline:     oklch(0.92 0.012 55 / 0.7);
 
-  --ink:          oklch(0.22 0.01 80);
-  --ink-2:        oklch(0.40 0.01 80);
-  --ink-3:        oklch(0.55 0.01 80);
-  --muted:        oklch(0.65 0.008 80);
+  --ink:          oklch(0.24 0.012 50);
+  --ink-2:        oklch(0.42 0.014 50);
+  --ink-3:        oklch(0.56 0.014 50);
+  --muted:        oklch(0.66 0.012 50);
 
-  --accent:       oklch(0.48 0.11 255);
-  --accent-soft:  oklch(0.93 0.03 255);
-  --accent-ink:   oklch(0.32 0.10 255);
+  /* Brand accent — warm clay (between dusty coral and warm amber) */
+  --accent:       oklch(0.60 0.13 38);
+  --accent-soft:  oklch(0.945 0.038 45);
+  --accent-ink:   oklch(0.42 0.12 38);
+  --accent-glow:  oklch(0.60 0.13 38 / 0.16);
 
-  --green:        oklch(0.58 0.10 150);
-  --green-soft:   oklch(0.94 0.04 150);
-  --amber:        oklch(0.68 0.13 75);
-  --amber-soft:   oklch(0.95 0.05 85);
-  --red:          oklch(0.56 0.17 25);
-  --red-soft:     oklch(0.95 0.04 25);
+  /* Running phase — cool, focused (used by neutral progress chrome) */
+  --running:      oklch(0.58 0.11 250);
+  --running-soft: oklch(0.94 0.03 250);
+
+  /* Verdict tones — warmer green, warm amber, conversational red */
+  --green:        oklch(0.58 0.11 145);
+  --green-soft:   oklch(0.945 0.045 140);
+  --green-tint:   oklch(0.97 0.022 140);
+  --amber:        oklch(0.70 0.13 65);
+  --amber-soft:   oklch(0.955 0.05 70);
+  --amber-tint:   oklch(0.98 0.026 65);
+  --red:          oklch(0.60 0.13 30);
+  --red-soft:     oklch(0.955 0.04 28);
+  --red-tint:     oklch(0.985 0.020 30);
 
   --shadow-1: 0 1px 0 oklch(0.20 0.01 80 / 0.04), 0 1px 2px oklch(0.20 0.01 80 / 0.04);
   --shadow-2: 0 4px 14px oklch(0.20 0.01 80 / 0.06), 0 1px 3px oklch(0.20 0.01 80 / 0.04);
@@ -39,30 +50,38 @@
 }
 
 [data-theme="dark"] {
-  --bg:           oklch(0.165 0.006 260);
-  --bg-2:         oklch(0.20 0.007 260);
-  --surface:      oklch(0.205 0.008 260);
-  --surface-2:    oklch(0.235 0.009 260);
-  --surface-sunk: oklch(0.18 0.007 260);
-  --border:       oklch(0.30 0.008 260);
-  --border-strong:oklch(0.40 0.010 260);
-  --hairline:     oklch(0.28 0.008 260 / 0.6);
+  /* Slightly warmed dark — base hue 40 instead of 260 */
+  --bg:           oklch(0.175 0.012 50);
+  --bg-2:         oklch(0.21 0.013 50);
+  --surface:      oklch(0.22 0.014 50);
+  --surface-2:    oklch(0.25 0.014 50);
+  --surface-sunk: oklch(0.19 0.012 50);
+  --border:       oklch(0.31 0.014 50);
+  --border-strong:oklch(0.41 0.016 50);
+  --hairline:     oklch(0.29 0.014 50 / 0.6);
 
-  --ink:          oklch(0.96 0.004 80);
-  --ink-2:        oklch(0.78 0.005 80);
-  --ink-3:        oklch(0.62 0.006 80);
-  --muted:        oklch(0.55 0.008 80);
+  --ink:          oklch(0.96 0.008 60);
+  --ink-2:        oklch(0.78 0.010 60);
+  --ink-3:        oklch(0.62 0.012 55);
+  --muted:        oklch(0.55 0.012 50);
 
-  --accent:       oklch(0.72 0.12 255);
-  --accent-soft:  oklch(0.32 0.07 255);
-  --accent-ink:   oklch(0.85 0.10 255);
+  --accent:       oklch(0.74 0.13 38);
+  --accent-soft:  oklch(0.34 0.08 38);
+  --accent-ink:   oklch(0.86 0.11 38);
+  --accent-glow:  oklch(0.74 0.13 38 / 0.22);
 
-  --green:        oklch(0.72 0.13 150);
-  --green-soft:   oklch(0.30 0.06 150);
-  --amber:        oklch(0.80 0.15 75);
-  --amber-soft:   oklch(0.32 0.07 75);
-  --red:          oklch(0.72 0.18 25);
-  --red-soft:     oklch(0.32 0.10 25);
+  --running:      oklch(0.74 0.13 250);
+  --running-soft: oklch(0.32 0.07 250);
+
+  --green:        oklch(0.74 0.13 145);
+  --green-soft:   oklch(0.30 0.07 145);
+  --green-tint:   oklch(0.27 0.05 145);
+  --amber:        oklch(0.80 0.14 65);
+  --amber-soft:   oklch(0.33 0.08 65);
+  --amber-tint:   oklch(0.27 0.05 65);
+  --red:          oklch(0.74 0.14 30);
+  --red-soft:     oklch(0.33 0.09 30);
+  --red-tint:     oklch(0.28 0.06 30);
 
   --shadow-1: 0 1px 0 oklch(0 0 0 / 0.3), 0 1px 2px oklch(0 0 0 / 0.3);
   --shadow-2: 0 4px 14px oklch(0 0 0 / 0.4), 0 1px 3px oklch(0 0 0 / 0.3);
@@ -124,10 +143,16 @@ input:focus, textarea:focus { outline: none; }
 .pc-btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
 .pc-btn:active { transform: translateY(0.5px); }
 .pc-btn[data-variant="primary"] {
+  background: var(--accent); color: white;
+  border-color: var(--accent);
+  box-shadow: 0 1px 0 oklch(from var(--accent) calc(l - 0.08) c h / 0.5) inset, var(--shadow-1);
+}
+.pc-btn[data-variant="primary"]:hover { background: oklch(from var(--accent) calc(l - 0.04) c h); border-color: oklch(from var(--accent) calc(l - 0.04) c h); }
+.pc-btn[data-variant="ink"] {
   background: var(--ink); color: var(--bg);
   border-color: var(--ink);
 }
-.pc-btn[data-variant="primary"]:hover { background: oklch(from var(--ink) calc(l - 0.04) c h); }
+.pc-btn[data-variant="ink"]:hover { background: oklch(from var(--ink) calc(l - 0.04) c h); }
 .pc-btn[data-variant="accent"] {
   background: var(--accent); color: white;
   border-color: var(--accent);
@@ -292,7 +317,21 @@ input:focus, textarea:focus { outline: none; }
   background: var(--ink-3);
 }
 
-/* status pills */
+/* prompt card hover treatment */
+.pc-prompt-card:hover {
+  border-color: oklch(from var(--accent) l c h / 0.4);
+  background: var(--surface);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-2);
+}
+.pc-prompt-card:hover > div:first-child {
+  background: var(--accent);
+  color: white;
+}
+.pc-prompt-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .status-pill {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 2px 8px 2px 6px;
@@ -302,7 +341,52 @@ input:focus, textarea:focus { outline: none; }
   border: 1px solid transparent;
 }
 .status-pill[data-tone="ok"]    { background: var(--green-soft); color: var(--green); border-color: oklch(from var(--green) l c h / 0.2); }
-.status-pill[data-tone="warn"]  { background: var(--amber-soft); color: oklch(from var(--amber) calc(l - 0.15) c h); border-color: oklch(from var(--amber) l c h / 0.25); }
+.status-pill[data-tone="warn"]  { background: var(--amber-soft); color: oklch(from var(--amber) calc(l - 0.18) c h); border-color: oklch(from var(--amber) l c h / 0.25); }
 .status-pill[data-tone="bad"]   { background: var(--red-soft); color: var(--red); border-color: oklch(from var(--red) l c h / 0.2); }
 .status-pill[data-tone="info"]  { background: var(--accent-soft); color: var(--accent-ink); border-color: oklch(from var(--accent) l c h / 0.2); }
 .status-pill[data-tone="muted"] { background: var(--surface-2); color: var(--ink-3); border-color: var(--border); }
+
+/* ─── Verdict pane tints (subtle wash behind the result column) ─── */
+.verdict-tint-green  { background: linear-gradient(180deg, var(--green-tint), var(--bg) 60%); }
+.verdict-tint-yellow { background: linear-gradient(180deg, var(--amber-tint), var(--bg) 60%); }
+.verdict-tint-red    { background: linear-gradient(180deg, var(--red-tint),   var(--bg) 60%); }
+
+/* ─── Sidebar workspace stripe (active project) ─── */
+.ws-active {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.ws-active::before {
+  content: '';
+  position: absolute; left: -1px; top: 8px; bottom: 8px;
+  width: 3px; border-radius: 0 2px 2px 0;
+  background: var(--accent);
+}
+
+/* ─── Soft accent halo (used behind the brand mark on idle) ─── */
+.brand-halo {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.brand-halo::before {
+  content: '';
+  position: absolute; inset: -16px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-glow), transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+.brand-halo > * { position: relative; z-index: 1; }
+
+/* ─── Empty preview — quiet warm wash ─── */
+.empty-preview {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; padding: 32px; text-align: center;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 35%, var(--accent-glow), transparent 70%),
+    var(--surface-sunk);
+  color: var(--ink-3);
+}
