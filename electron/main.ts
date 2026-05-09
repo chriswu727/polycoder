@@ -191,6 +191,13 @@ function createMainWindow(): BrowserWindow {
     minWidth: 960,
     minHeight: 600,
     title: 'polycoder',
+    // hiddenInset hides the title bar background but keeps the
+    // traffic-light dots floating over the renderer. Avoids the
+    // jarring dark-bar effect when macOS is in dark mode but our
+    // app theme is light. Renderer reserves padding-top so the
+    // dots have visual breathing room.
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 14, y: 12 },
     webPreferences: {
       // CJS preload bundled via esbuild — Electron's contextBridge
       // injection on ESM preload was silently dropping the exposed

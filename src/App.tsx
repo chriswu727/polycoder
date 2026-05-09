@@ -156,6 +156,20 @@ export function App(): React.ReactElement {
         background: 'var(--bg)',
       }}
     >
+      {/* Slim drag-region strip — reserves space for the floating
+       * macOS traffic-light dots (we use titleBarStyle: 'hiddenInset')
+       * and lets the user drag the window from anywhere on this row.
+       * Buttons and inputs can opt back to non-drag with their own
+       * -webkit-app-region: no-drag if they ever live in this row. */}
+      <div
+        style={{
+          height: 28,
+          flex: '0 0 auto',
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+          ...({ WebkitAppRegion: 'drag' } as React.CSSProperties),
+          background: 'var(--bg)',
+        }}
+      />
       {showFirstRun ? (
         <FirstRun />
       ) : !current ? (
