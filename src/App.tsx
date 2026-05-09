@@ -22,27 +22,12 @@ import { Mark } from '@/components/icons.js'
 
 type TopTab = 'workspace' | 'settings'
 
-const TitleBar: FC<{ workspaceName: string | null }> = ({ workspaceName }) => (
-  <div className="titlebar">
-    <div className="traffic">
-      <div className="traffic-dot" data-c="r" />
-      <div className="traffic-dot" data-c="y" />
-      <div className="traffic-dot" data-c="g" />
-    </div>
-    <div
-      style={{
-        flex: 1,
-        textAlign: 'center',
-        fontSize: 11.5,
-        color: 'var(--ink-3)',
-        fontFamily: "'Geist Mono', monospace",
-      }}
-    >
-      polycoder{workspaceName ? ` · ${workspaceName}` : ''}
-    </div>
-    <div style={{ width: 60 }} />
-  </div>
-)
+// Note: the V0.2 design package included an in-app titlebar with
+// fake macOS traffic-light dots — that was a "screenshot frame"
+// for the canvas-style design canvas. In the real Electron app
+// the OS provides its own titlebar, so we don't render one here.
+// We do mirror the workspace name into document.title so macOS's
+// native window title shows "polycoder · <project>".
 
 const WorkspacePicker: FC<{ onCreate: () => void }> = ({ onCreate }) => {
   const workspaces = useWorkspaceStore((s) => s.workspaces)
@@ -155,6 +140,11 @@ export function App(): React.ReactElement {
     document.documentElement.setAttribute('data-theme', 'light')
   }, [])
 
+  // Mirror current workspace name into the OS window title.
+  useEffect(() => {
+    document.title = current ? `polycoder · ${current.name}` : 'polycoder'
+  }, [current])
+
   const showFirstRun = forceFirstRun || workspaces.length === 0
 
   return (
@@ -166,8 +156,6 @@ export function App(): React.ReactElement {
         background: 'var(--bg)',
       }}
     >
-      <TitleBar workspaceName={current?.name ?? null} />
-
       {showFirstRun ? (
         <FirstRun />
       ) : !current ? (
