@@ -237,25 +237,37 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
 
     if (!current) return null
 
-    const previewState: PreviewState =
-      status === 'idle' && !result
-        ? { kind: 'empty-idle' }
-        : status === 'running'
-          ? { kind: 'building' }
-          : status === 'failed'
-            ? { kind: 'failed-show-prior' }
-            : status === 'completed' || status === 'aborted'
-              ? {
-                  kind: 'ready',
-                  iterLabel: `iter ${String(iterationNumber ?? 0).padStart(2, '0')} · index.html`,
-                }
-              : { kind: 'empty-idle' }
+    // Right pane only appears once there's something to show.
+    // Before the first prompt, the layout is two panes only —
+    // sidebar + chat-takes-the-rest. The "Your app will appear here"
+    // placeholder is informationless when nothing's started, so
+    // claiming half the screen is wasteful.
+    const hasIterationActivity = status !== 'idle' || !!result
 
-    const showProgressOrResult = status !== 'idle' || !!result
+    const previewState: PreviewState =
+      status === 'running'
+        ? { kind: 'building' }
+        : status === 'failed'
+          ? { kind: 'failed-show-prior' }
+          : status === 'completed' || status === 'aborted'
+            ? {
+                kind: 'ready',
+                iterLabel: `iter ${String(iterationNumber ?? 0).padStart(2, '0')} · index.html`,
+              }
+            : { kind: 'empty-idle' }
+
     const presetLabel = detectPresetLabel(roleAssignments)
 
     return (
-      <div className="panes" style={{ display: 'grid', gridTemplateColumns: '232px 1fr 1fr', flex: 1, minHeight: 0 }}>
+      <div
+        className="panes"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: hasIterationActivity ? '232px 1fr 1fr' : '232px 1fr',
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
         <Sidebar
           activeIter={activeIter}
           onSelectIter={(id) => setActiveIter(id)}
@@ -279,18 +291,18 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
           <ChatBody />
         </ChatPane>
 
-        <div
-          className="pane pane-preview"
-          style={{ borderLeft: '1px solid var(--hairline)' }}
-        >
+        {hasIterationActivity ? (
           <div
-            style={{
-              display: 'grid',
-              gridTemplateRows: showProgressOrResult ? '1.1fr 1fr' : '1fr',
-              height: '100%',
-            }}
+            className="pane pane-preview fade-up"
+            style={{ borderLeft: '1px solid var(--hairline)' }}
           >
-            {showProgressOrResult ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateRows: '1.1fr 1fr',
+                height: '100%',
+              }}
+            >
               <div
                 style={{
                   overflow: 'hidden',
@@ -308,12 +320,12 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
                   <IterationResult />
                 )}
               </div>
-            ) : null}
-            <div style={{ overflow: 'hidden' }}>
-              <PreviewPane state={previewState} />
+              <div style={{ overflow: 'hidden' }}>
+                <PreviewPane state={previewState} />
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
       </div>
     )
   }
