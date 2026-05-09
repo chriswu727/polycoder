@@ -1,24 +1,121 @@
+// Settings shell — design's tabs-in-header strip + scrollable
+// content area. The Secrets and Team panels keep the V0.1
+// implementations underneath (they work; the internal visual
+// language is the V0.1.2 follow-up). The shell + tabs are
+// design-faithful.
+
 import { useState } from 'react'
-import { Tabs } from '@/components/ui/Tabs.js'
+import type { FC } from 'react'
+
 import { SecretsTab } from './SecretsTab.js'
 import { TeamConfigTab } from './TeamConfigTab.js'
+import { IconCpu, IconKey } from '@/components/icons.js'
 
-type SettingsTab = 'secrets' | 'team'
+type Section = 'secrets' | 'team'
 
-export function Settings() {
-  const [tab, setTab] = useState<SettingsTab>('secrets')
+export const Settings: FC<{ initialSection?: Section }> = ({
+  initialSection = 'secrets',
+}) => {
+  const [section, setSection] = useState<Section>(initialSection)
 
   return (
-    <div className="space-y-4">
-      <Tabs<SettingsTab>
-        active={tab}
-        onChange={setTab}
-        items={[
-          { key: 'secrets', label: 'Secrets' },
-          { key: 'team', label: 'Team' },
-        ]}
-      />
-      {tab === 'secrets' ? <SecretsTab /> : <TeamConfigTab />}
+    <div
+      className="pane"
+      style={{ flex: 1, gridColumn: '2 / span 2', borderLeft: '1px solid var(--hairline)' }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '12px 16px',
+          borderBottom: '1px solid var(--hairline)',
+          background: 'var(--bg-2)',
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 600, marginRight: 12 }}>Settings</div>
+        {(
+          [
+            { id: 'secrets', label: 'Secrets', Icon: IconKey },
+            { id: 'team', label: 'Team', Icon: IconCpu },
+          ] as const
+        ).map((t) => {
+          const active = section === t.id
+          const Icon = t.Icon
+          return (
+            <button
+              key={t.id}
+              onClick={() => setSection(t.id)}
+              className="pc-btn"
+              data-variant={active ? '' : 'ghost'}
+              data-size="sm"
+              style={{
+                background: active ? 'var(--surface)' : 'transparent',
+                borderColor: active ? 'var(--border)' : 'transparent',
+              }}
+            >
+              <Icon size={12} /> {t.label}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="scroll" style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          {section === 'secrets' ? (
+            <>
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  letterSpacing: '-0.015em',
+                  marginBottom: 4,
+                }}
+              >
+                Provider keys
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  color: 'var(--ink-2)',
+                  marginBottom: 18,
+                  lineHeight: 1.5,
+                }}
+              >
+                Keys for each AI provider you want polycoder to use. Stored in
+                the OS keychain. Not synced. Sent only to the provider when
+                calling their API.
+              </div>
+              <SecretsTab />
+            </>
+          ) : (
+            <>
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  letterSpacing: '-0.015em',
+                  marginBottom: 4,
+                }}
+              >
+                Team configuration
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  color: 'var(--ink-2)',
+                  marginBottom: 18,
+                  lineHeight: 1.5,
+                }}
+              >
+                Which model handles which step. Pick a preset, or override
+                individual roles.
+              </div>
+              <TeamConfigTab />
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

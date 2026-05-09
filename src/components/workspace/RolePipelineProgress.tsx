@@ -1,22 +1,17 @@
-import { Loader2, CheckCircle2, XCircle, Circle, RefreshCw } from 'lucide-react'
-import { useIterationStore, type RoleProgress } from '@/stores/iteration.js'
-import { Card, CardContent } from '@/components/ui/Card.js'
-import { Badge } from '@/components/ui/Badge.js'
-import type { RoleType } from '@core/types/role.js'
+// Vertical timeline of the 8 roles. Per design, this is the
+// progress visualization for an in-flight iteration — replaces a
+// generic spinner. As each role finishes, its row gets a checkmark
+// and a one-line message describing what it did.
+//
+// Friendly role labels (Understanding / Sketching / Planning /
+// Writing / Double-checking / Reviewing / Testing / Wrapping up)
+// match the design + the V0.1.1 store error translations.
 
-// Vibe-coder-friendly action verbs. Underlying role IDs unchanged
-// in the orchestrator; this is purely a display layer. Settings →
-// Team still surfaces the technical role names for power users.
-const ROLE_LABELS: Record<RoleType, string> = {
-  translator: 'Understanding your idea',
-  designer: 'Sketching the layout',
-  architect: 'Planning the structure',
-  coder: 'Writing your app',
-  adversary: 'Double-checking',
-  long_term_critic: 'Reviewing',
-  test_runner: 'Testing',
-  communicator: 'Wrapping up',
-}
+import type { FC } from 'react'
+
+import type { RoleType } from '@core/types/role.js'
+import { useIterationStore } from '@/stores/iteration.js'
+import { ROLE_ICONS, IconCheck, IconX, IconSparkle, IconStop } from '@/components/icons.js'
 
 const ROLE_ORDER: RoleType[] = [
   'translator',
@@ -29,68 +24,265 @@ const ROLE_ORDER: RoleType[] = [
   'communicator',
 ]
 
-export function RolePipelineProgress() {
+const ROLE_LABEL: Record<RoleType, string> = {
+  translator: 'Understanding your idea',
+  designer: 'Sketching the layout',
+  architect: 'Planning the structure',
+  coder: 'Writing your app',
+  adversary: 'Double-checking',
+  long_term_critic: 'Reviewing',
+  test_runner: 'Testing',
+  communicator: 'Wrapping up',
+}
+
+type RowStatus = 'idle' | 'running' | 'completed' | 'failed'
+
+const TimelineRow: FC<{
+  role: RoleType
+  status: RowStatus
+  isLast: boolean
+  detail?: string | undefined
+}> = ({ role, status, isLast, detail }) => {
+  const Icon = ROLE_ICONS[role]
+  const isRunning = status === 'running'
+  const isDone = status === 'completed'
+  const isFailed = status === 'failed'
+  const isPending = status === 'idle'
+
+  return (
+    <div style={{ display: 'flex', gap: 12, position: 'relative', paddingBottom: isLast ? 0 : 14 }}>
+      {!isLast ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: 13.5,
+            top: 28,
+            bottom: 0,
+            width: 1,
+            background: isDone ? 'var(--border-strong)' : 'var(--hairline)',
+          }}
+        />
+      ) : null}
+
+      <div style={{ position: 'relative', flex: '0 0 auto' }}>
+        <div
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            background: isDone
+              ? 'var(--ink)'
+              : isFailed
+                ? 'var(--red)'
+                : isRunning
+                  ? 'var(--surface)'
+                  : 'var(--surface-2)',
+            color: isDone
+              ? 'var(--bg)'
+              : isFailed
+                ? '#fff'
+                : isRunning
+                  ? 'var(--accent)'
+                  : 'var(--ink-3)',
+            border:
+              '1px solid ' +
+              (isDone
+                ? 'var(--ink)'
+                : isFailed
+                  ? 'var(--red)'
+                  : isRunning
+                    ? 'var(--accent)'
+                    : 'var(--border)'),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {isDone ? <IconCheck size={14} /> : isFailed ? <IconX size={14} /> : <Icon size={14} />}
+        </div>
+        {isRunning ? (
+          <div
+            style={{
+              position: 'absolute',
+              inset: -2,
+              borderRadius: 10,
+              border: '1.5px solid var(--accent)',
+              animation: 'pc-pulse-ring 1.6s ease-out infinite',
+              pointerEvents: 'none',
+            }}
+          />
+        ) : null}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 8,
+            justifyContent: 'space-between',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12.5,
+              fontWeight: 500,
+              color: isPending ? 'var(--ink-3)' : 'var(--ink)',
+            }}
+          >
+            {ROLE_LABEL[role]}
+          </div>
+          <div
+            className="pc-mono"
+            style={{ fontSize: 10.5, color: 'var(--ink-3)', flex: '0 0 auto' }}
+          >
+            {isRunning ? <span style={{ color: 'var(--accent)' }}>· running</span> : null}
+            {isPending ? <span>queued</span> : null}
+            {isFailed ? <span style={{ color: 'var(--red)' }}>failed</span> : null}
+          </div>
+        </div>
+        {detail ? (
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--ink-2)',
+              marginTop: 3,
+              lineHeight: 1.45,
+            }}
+          >
+            {detail}
+          </div>
+        ) : null}
+        {isRunning && !detail ? (
+          <div
+            style={{
+              marginTop: 6,
+              height: 2,
+              borderRadius: 2,
+              background: 'var(--surface-2)',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '40%',
+                height: '100%',
+                background: 'var(--accent)',
+                animation: 'pc-progress-indeterminate 1.6s ease-in-out infinite',
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+export const RolePipelineProgress: FC<{ onAbort?: () => void }> = ({ onAbort }) => {
   const status = useIterationStore((s) => s.status)
   const roleProgress = useIterationStore((s) => s.roleProgress)
   const cost = useIterationStore((s) => s.cumulativeCostUsd)
 
   if (status === 'idle') return null
 
-  return (
-    <Card>
-      <CardContent className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <span className="font-medium uppercase tracking-wide">Pipeline</span>
-          <span>cost so far: ${cost.toFixed(4)}</span>
-        </div>
-        <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-          {ROLE_ORDER.map((r) => (
-            <li key={r}>
-              <RoleProgressRow progress={roleProgress[r]} />
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
-  )
-}
+  const completedCount = ROLE_ORDER.filter(
+    (r) => roleProgress[r]?.status === 'completed',
+  ).length
+  const runningRole = ROLE_ORDER.find((r) => roleProgress[r]?.status === 'running')
 
-function RoleProgressRow({ progress }: { progress: RoleProgress }) {
-  const { icon, tone } = iconAndTone(progress.status)
   return (
-    <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm">
-      <span className={tone}>{icon}</span>
-      <span className="flex-1 font-medium">{ROLE_LABELS[progress.role]}</span>
-      {progress.model ? (
-        <Badge tone="info" className="font-mono text-[10px]">
-          {progress.model}
-        </Badge>
-      ) : null}
-      {progress.envelopeStatus ? (
-        <Badge tone="neutral" className="text-[10px]">
-          {progress.envelopeStatus}
-        </Badge>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div
+        style={{
+          padding: '14px 16px',
+          borderBottom: '1px solid var(--hairline)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            background: 'var(--accent-soft)',
+            color: 'var(--accent)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <IconSparkle size={14} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 500 }}>Your team is on it</div>
+          <div
+            className="pc-mono"
+            style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}
+          >
+            step {Math.min(completedCount + 1, ROLE_ORDER.length)} of {ROLE_ORDER.length} · $
+            {cost.toFixed(2)} so far
+          </div>
+        </div>
+        {onAbort && status === 'running' ? (
+          <button className="pc-btn" data-size="sm" onClick={onAbort}>
+            <IconStop size={11} /> Stop
+          </button>
+        ) : null}
+      </div>
+
+      <div className="scroll" style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
+        {ROLE_ORDER.map((role, i) => {
+          const rp = roleProgress[role]
+          const rowStatus: RowStatus =
+            rp?.status === 'completed'
+              ? 'completed'
+              : rp?.status === 'running'
+                ? 'running'
+                : rp?.status === 'failed'
+                  ? 'failed'
+                  : 'idle'
+
+          // Detail line: model on completed rows, error detail on
+          // failed, nothing while running (we show the indeterminate
+          // bar instead).
+          let detail: string | undefined
+          if (rowStatus === 'completed' && rp?.model) detail = rp.model
+          if (rowStatus === 'failed' && rp?.errorDetail) {
+            detail = rp.errorDetail.slice(0, 200)
+          }
+          // Highlight the running role with no detail (bar takes over).
+
+          return (
+            <TimelineRow
+              key={role}
+              role={role}
+              status={rowStatus}
+              isLast={i === ROLE_ORDER.length - 1}
+              detail={detail}
+            />
+          )
+        })}
+      </div>
+
+      {runningRole ? (
+        <div
+          style={{
+            padding: '8px 16px 12px',
+            fontSize: 11.5,
+            color: 'var(--ink-3)',
+            borderTop: '1px solid var(--hairline)',
+            background: 'var(--bg-2)',
+          }}
+        >
+          This usually takes 5-15 minutes. You can step away — we'll keep working.
+        </div>
       ) : null}
     </div>
   )
-}
-
-function iconAndTone(status: RoleProgress['status']) {
-  switch (status) {
-    case 'idle':
-      return { icon: <Circle size={16} />, tone: 'text-slate-300' }
-    case 'running':
-      return {
-        icon: <Loader2 size={16} className="animate-spin" />,
-        tone: 'text-blue-600',
-      }
-    case 'completed':
-      return { icon: <CheckCircle2 size={16} />, tone: 'text-emerald-600' }
-    case 'failed':
-      return { icon: <XCircle size={16} />, tone: 'text-red-600' }
-    case 'retried':
-      return { icon: <RefreshCw size={16} />, tone: 'text-amber-600' }
-    case 'skipped':
-      return { icon: <Circle size={16} />, tone: 'text-slate-400' }
-  }
 }
