@@ -192,7 +192,11 @@ function createMainWindow(): BrowserWindow {
     minHeight: 600,
     title: 'polycoder',
     webPreferences: {
-      preload: join(__dirname, 'preload.js'),
+      // CJS preload bundled via esbuild — Electron's contextBridge
+      // injection on ESM preload was silently dropping the exposed
+      // object in Electron 34. See V0.1.1 hot-fixes commit for the
+      // diagnosis.
+      preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       // sandbox: false because preload.js is ESM (compiled with
@@ -204,6 +208,37 @@ function createMainWindow(): BrowserWindow {
     },
   })
 
+  // V0.1.1 diagnostic: ask the renderer what window.polycoder
+  // looks like after page load, write to disk so we can read it.
+  win.webContents.on('did-finish-load', () => {
+    void (async () => {
+      try {
+        const result = await win.webContents.executeJavaScript(`
+          (() => {
+            const api = window.polycoder;
+            return {
+              hasPolycoder: typeof api,
+              topKeys: api ? Object.keys(api) : [],
+              workspaceKeys: api?.workspace ? Object.keys(api.workspace) : null,
+              hasPickFolder: typeof api?.workspace?.pickFolder,
+              version: api?.version,
+            };
+          })()
+        `)
+        const { writeFileSync } = await import('node:fs')
+        writeFileSync(
+          '/tmp/polycoder-renderer-diag.json',
+          JSON.stringify({ ts: new Date().toISOString(), ...result }, null, 2),
+        )
+      } catch (e) {
+        const { writeFileSync } = await import('node:fs')
+        writeFileSync(
+          '/tmp/polycoder-renderer-diag.json',
+          JSON.stringify({ ts: new Date().toISOString(), error: String(e) }, null, 2),
+        )
+      }
+    })()
+  })
   if (isDev) {
     void win.loadURL(RENDERER_DEV_URL)
     win.webContents.openDevTools({ mode: 'detach' })

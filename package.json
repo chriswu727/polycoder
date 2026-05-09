@@ -21,7 +21,7 @@
     "test:ui": "vitest --ui",
     "dev": "vite",
     "build:renderer": "vite build",
-    "build:electron": "tsc -p electron/tsconfig.json && tsc-alias -p electron/tsconfig.json && node -e \"const fs=require('fs'),f=['dist/electron/electron/main.js','dist/electron/electron/preload.js'];for(const p of f){const s=fs.readFileSync(p,'utf8');fs.writeFileSync(p,s.replace(/from '\\\\.\\\\.\\\\/electron'/g,\\\"from 'electron'\\\"))}\" && cp data/schema.sql dist/electron/data/schema.sql",
+    "build:electron": "tsc -p electron/tsconfig.json && tsc-alias -p electron/tsconfig.json && node -e \"const fs=require('fs'),f=['dist/electron/electron/main.js'];for(const p of f){const s=fs.readFileSync(p,'utf8');fs.writeFileSync(p,s.replace(/from '\\\\.\\\\.\\\\/electron'/g,\\\"from 'electron'\\\"))}\" && esbuild electron/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/electron/electron/preload.cjs && cp data/schema.sql dist/electron/data/schema.sql",
     "electron:dev": "concurrently -k -n vite,electron -c blue,green \"pnpm dev\" \"wait-on tcp:5173 && pnpm build:electron && electron dist/electron/electron/main.js\"",
     "electron:build": "pnpm build:electron && pnpm build:renderer",
     "smoke": "tsx --env-file-if-exists=.env.local scripts/smoke.ts",
