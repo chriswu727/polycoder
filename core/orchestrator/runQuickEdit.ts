@@ -40,6 +40,7 @@ import { startIteration, finishIteration } from '../../data/iterations.js'
 import { appendCostRecord } from '../../data/costRecords.js'
 import { PipelineEventBus } from './events.js'
 import { parseAtMentions, formatMentionsContextBlock } from './atFileMentions.js'
+import { loadProjectRules, formatRulesAddendum } from './projectRules.js'
 
 const QUICK_EDIT_TOOLS = [
   'read_file',
@@ -192,10 +193,14 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
       args.workspace,
       mentions,
     )
+    const projectRules = loadProjectRules(args.workspace.workspace_root)
+    const systemPrompt =
+      QUICK_EDIT_SYSTEM_PROMPT + formatRulesAddendum(projectRules)
+
     const run = await runWithTools({
       provider: args.provider,
       model: args.model,
-      systemPrompt: QUICK_EDIT_SYSTEM_PROMPT,
+      systemPrompt,
       initialUserMessage: userMessage,
       tools,
       ctx,

@@ -79,6 +79,13 @@ export type DynamicPromptInputs = {
    * suffix to set context ("you are processing iteration N").
    */
   total_iterations: number
+  /**
+   * Optional `.polycoder/rules.md` / AGENTS.md / CLAUDE.md content,
+   * already loaded + truncated by core/orchestrator/projectRules.ts.
+   * Appended to the dynamic suffix when present so every role sees
+   * the user's workspace-level preferences.
+   */
+  project_rules_text?: string
 }
 
 // ─── Assembly ───────────────────────────────────────────────────────
@@ -141,6 +148,17 @@ function renderDynamicSuffix(role: RoleType, d: DynamicPromptInputs): string {
     lines.push('## Project memory snapshot')
     lines.push('(empty — first iteration)')
     lines.push('')
+  }
+
+  if (d.project_rules_text && d.project_rules_text.trim() !== '') {
+    lines.push('## Project rules (pinned by the user)')
+    lines.push(
+      'Respect these instructions even if they conflict with your defaults.',
+      'They encode constraints you cannot see from the code alone.',
+      '',
+      d.project_rules_text.trim(),
+      '',
+    )
   }
 
   lines.push(

@@ -37,6 +37,7 @@ import {
 } from './iterationTrace.js'
 import { getProjectMemory } from '../../data/projectMemory.js'
 import { listIterations } from '../../data/iterations.js'
+import { loadProjectRules } from './projectRules.js'
 import type { CommunicatorPayload } from '@core/types/payloads/communicator.js'
 import type { CoderPayload } from '@core/types/payloads/coder.js'
 
@@ -105,11 +106,13 @@ export async function runIteration(
     iteration_number: trace.iteration_number,
   })
 
+  const projectRules = loadProjectRules(args.workspace.workspace_root)
   const promptInputs = {
     workspace_name: args.workspace.name,
     iteration_number: trace.iteration_number,
     project_memory,
     total_iterations,
+    ...(projectRules ? { project_rules_text: projectRules.text } : {}),
   }
 
   try {
