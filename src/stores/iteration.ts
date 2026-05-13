@@ -36,8 +36,17 @@ export type IterationStateStatus =
   | 'aborted'
   | 'failed'
 
+/**
+ * Quick Edit runs use the single-Coder fast path (runQuickEdit) and
+ * land in the same iterations table, but only the `coder` role is
+ * present in role_outputs. The renderer treats those iterations
+ * distinctly: no 8-role timeline, no team-huddle bubble.
+ */
+export type IterationMode = 'full' | 'quick'
+
 export type IterationState = {
   status: IterationStateStatus
+  mode: IterationMode
   iteration_id: string | null
   iteration_number: number | null
   user_prompt: string | null
@@ -50,6 +59,7 @@ export type IterationState = {
 
 type IterationStore = IterationState & {
   start: (workspace_id: string, prompt: string) => Promise<void>
+  startQuickEdit: (workspace_id: string, instruction: string) => Promise<void>
   abort: (workspace_id: string) => Promise<void>
   reset: () => void
   /** Load a past iteration from the DB into the store. Renders in
@@ -81,6 +91,7 @@ function emptyRoleProgress(): Record<RoleType, RoleProgress> {
 function initial(): IterationState {
   return {
     status: 'idle',
+    mode: 'full',
     iteration_id: null,
     iteration_number: null,
     user_prompt: null,
@@ -90,6 +101,14 @@ function initial(): IterationState {
     result: null,
     error: null,
   }
+}
+
+// Quick Edit iterations: only Coder is in role_outputs, and it's the
+// fast path. Detected from the DB shape on loadPast + set explicitly
+// when we kick a Quick Edit off the renderer side.
+function isQuickEditOutputs(roleOutputs: Record<string, unknown>): boolean {
+  const keys = Object.keys(roleOutputs)
+  return keys.length === 1 && keys[0] === 'coder'
 }
 
 export const useIterationStore = create<IterationStore>((set, get) => ({
@@ -103,11 +122,30 @@ export const useIterationStore = create<IterationStore>((set, get) => ({
     set({
       ...initial(),
       status: 'running',
+      mode: 'full',
       user_prompt: prompt,
     })
     const ack = await window.polycoder.iteration.start({
       workspace_id,
       user_prompt: prompt,
+    })
+    if (!ack.ok) {
+      set({ status: 'failed', error: ack.error })
+      return
+    }
+    set({ iteration_id: ack.iteration_id, iteration_number: ack.iteration_number })
+  },
+
+  async startQuickEdit(workspace_id, instruction) {
+    set({
+      ...initial(),
+      status: 'running',
+      mode: 'quick',
+      user_prompt: instruction,
+    })
+    const ack = await window.polycoder.iteration.quickEdit({
+      workspace_id,
+      instruction,
     })
     if (!ack.ok) {
       set({ status: 'failed', error: ack.error })
@@ -183,6 +221,9 @@ export const useIterationStore = create<IterationStore>((set, get) => ({
       set({
         ...initial(),
         status: 'completed',
+        mode: isQuickEditOutputs(roleOutputs as Record<string, unknown>)
+          ? 'quick'
+          : 'full',
         iteration_id: r.id,
         iteration_number: r.iteration_number,
         user_prompt: r.user_prompt,

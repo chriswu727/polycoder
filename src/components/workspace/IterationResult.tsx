@@ -454,12 +454,127 @@ const FailureView: FC<{ code: FailureCode; stoppedAtRole: RoleType | undefined; 
     )
   }
 
+const QuickEditResult: FC = () => {
+  const result = useIterationStore((s) => s.result)
+  const error = useIterationStore((s) => s.error)
+  const costFormat = usePreferencesStore.getState().costFormat
+
+  // Failure branch — surface the error inline. Quick Edit failures
+  // don't pass through the role-pipeline failure messages list; this
+  // is intentionally a plainer panel.
+  if (result?.status === 'failed' || result?.status === 'aborted') {
+    const detail =
+      result.status === 'failed' ? result.error : result.reason
+    return (
+      <div
+        className="scroll"
+        style={{
+          overflowY: 'auto',
+          height: '100%',
+          padding: 16,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            padding: '14px 16px',
+            background: 'var(--surface)',
+            border: '1px solid oklch(from var(--red) l c h / 0.30)',
+            backgroundImage:
+              'linear-gradient(135deg, var(--red-tint), transparent 55%)',
+            borderRadius: 12,
+            boxShadow: 'var(--shadow-1)',
+          }}
+        >
+          <div className="pc-eyebrow" style={{ marginBottom: 6 }}>
+            Quick edit · stopped
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
+            {detail || error || 'Quick edit did not complete.'}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (result?.status !== 'completed') return null
+
+  const coderEnvelope = result.role_outputs.coder
+  const summary = coderEnvelope?.summary ?? '(no summary)'
+  const meta = `${(result.duration_ms / 1000).toFixed(1)}s · ${formatCost(
+    result.total_cost_usd,
+    costFormat,
+  )}`
+
+  return (
+    <div
+      className="scroll"
+      style={{
+        overflowY: 'auto',
+        height: '100%',
+        padding: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+      }}
+    >
+      {/* Quick edit verdict — lighter than the full pipeline planet
+       *  banner. A small accent stripe + label, then the model's
+       *  free-form summary. */}
+      <div
+        style={{
+          padding: '14px 16px',
+          background: 'var(--surface)',
+          border: '1px solid oklch(from var(--green) l c h / 0.25)',
+          backgroundImage:
+            'linear-gradient(135deg, var(--green-tint), transparent 55%)',
+          borderRadius: 12,
+          boxShadow: 'var(--shadow-1)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <div className="pc-eyebrow">Quick edit · done</div>
+          <span
+            className="pc-mono"
+            style={{ fontSize: 10.5, color: 'var(--ink-3)' }}
+          >
+            {meta}
+          </span>
+        </div>
+        <div
+          style={{
+            fontSize: 13,
+            color: 'var(--ink-2)',
+            marginTop: 8,
+            lineHeight: 1.55,
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {summary}
+        </div>
+      </div>
+
+      <FilesChangedSection files={result.files_changed} />
+    </div>
+  )
+}
+
 export const IterationResult: FC = () => {
   const status = useIterationStore((s) => s.status)
   const result = useIterationStore((s) => s.result)
   const error = useIterationStore((s) => s.error)
+  const mode = useIterationStore((s) => s.mode)
 
   if (status === 'idle' || !result) return null
+
+  // Quick Edit completed/failed: lighter result panel — no team
+  // huddle, no Communicator prose (there isn't one), just Coder's
+  // free-form summary + files changed + cost.
+  if (mode === 'quick' && (status === 'completed' || status === 'failed')) {
+    return <QuickEditResult />
+  }
 
   if (status === 'failed') {
     if (result.status !== 'failed') return null

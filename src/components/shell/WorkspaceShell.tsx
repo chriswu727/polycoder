@@ -13,7 +13,7 @@ import { useWorkspaceStore } from '@/stores/workspace.js'
 import { useIterationStore } from '@/stores/iteration.js'
 
 import { Sidebar } from './Sidebar.js'
-import { ChatBubble, ChatComposer, ChatPane } from './ChatPane.js'
+import { ChatBubble, ChatComposer, ChatPane, type ComposerMode } from './ChatPane.js'
 import { RolePipelineProgress } from '@/components/workspace/RolePipelineProgress.js'
 import { IterationResult } from '@/components/workspace/IterationResult.js'
 import { PreviewPane, type PreviewState } from '@/components/workspace/PreviewPane.js'
@@ -200,6 +200,7 @@ const IdleChat: FC<{ onSend: (text: string) => void }> = ({ onSend }) => {
 
 const ChatBody: FC = () => {
   const status = useIterationStore((s) => s.status)
+  const mode = useIterationStore((s) => s.mode)
   const result = useIterationStore((s) => s.result)
   const userPrompt = useIterationStore((s) => s.user_prompt)
   const iterationNumber = useIterationStore((s) => s.iteration_number)
@@ -214,6 +215,8 @@ const ChatBody: FC = () => {
   if (status === 'idle' && !result) {
     return <IdleChat onSend={onSend} />
   }
+
+  const isQuick = mode === 'quick'
 
   return (
     <>
@@ -234,18 +237,54 @@ const ChatBody: FC = () => {
         >
           <Chorus pulse size={6} />
           <div style={{ flex: 1, fontSize: 12.5, color: 'var(--ink-2)' }}>
-            Your team is talking it through.{' '}
-            <span style={{ color: 'var(--ink-3)' }}>5-15 minutes typical.</span>
+            {isQuick ? (
+              <>
+                Coder is on it.{' '}
+                <span style={{ color: 'var(--ink-3)' }}>
+                  5-15 seconds typical.
+                </span>
+              </>
+            ) : (
+              <>
+                Your team is talking it through.{' '}
+                <span style={{ color: 'var(--ink-3)' }}>
+                  5-15 minutes typical.
+                </span>
+              </>
+            )}
           </div>
         </div>
       ) : null}
 
-      {(status === 'completed' || status === 'aborted') && result?.status === 'completed' ? (
+      {(status === 'completed' || status === 'aborted') &&
+      result?.status === 'completed' &&
+      !isQuick ? (
         <CompletedTeamBubble
           verdict={result.traffic_light}
           iterationNumber={iterationNumber}
-          payload={result.role_outputs.communicator?.payload as CommunicatorPayload | undefined}
+          payload={
+            result.role_outputs.communicator?.payload as
+              | CommunicatorPayload
+              | undefined
+          }
         />
+      ) : null}
+
+      {(status === 'completed' || status === 'aborted') &&
+      result?.status === 'completed' &&
+      isQuick ? (
+        <ChatBubble
+          from="team"
+          meta={`iter ${String(iterationNumber ?? 0).padStart(2, '0')} · quick edit`}
+        >
+          <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
+            {result.files_changed.length === 0
+              ? "I didn't need to change any files. See the summary on the right."
+              : `Edited ${result.files_changed.length} file${
+                  result.files_changed.length === 1 ? '' : 's'
+                }. Summary + diff on the right.`}
+          </div>
+        </ChatBubble>
       ) : null}
 
       {status === 'failed' && result?.status === 'failed' ? (
@@ -323,6 +362,7 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
     const reset = useIterationStore((s) => s.reset)
     const bootstrap = useIterationStore((s) => s.bootstrap)
     const [activeIter, setActiveIter] = useState<string | null>(null)
+    const [composerMode, setComposerMode] = useState<ComposerMode>('quick')
 
     useEffect(() => {
       const off = bootstrap(() => useWorkspaceStore.getState().current?.id ?? null)
@@ -381,9 +421,17 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
         <ChatPane
           footer={
             <ChatComposer
-              onSend={(text) => {
+              mode={composerMode}
+              onModeChange={setComposerMode}
+              onSend={(text, mode) => {
                 if (!current) return
-                void useIterationStore.getState().start(current.id, text)
+                if (mode === 'quick') {
+                  void useIterationStore
+                    .getState()
+                    .startQuickEdit(current.id, text)
+                } else {
+                  void useIterationStore.getState().start(current.id, text)
+                }
               }}
               disabled={status === 'running'}
               {...(presetLabel ? { presetLabel } : {})}

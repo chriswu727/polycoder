@@ -27,6 +27,7 @@ function emptyState(): IterationState {
   for (const r of ALL_ROLES) roleProgress[r] = { role: r, status: 'idle' }
   return {
     status: 'idle',
+    mode: 'full',
     iteration_id: null,
     iteration_number: null,
     user_prompt: null,

@@ -148,6 +148,13 @@ export type IterationSummary = {
   started_at: number
   duration_ms: number | null
   total_cost_usd: number | null
+  /**
+   * Derived from role_outputs_json shape: a row with only `coder` in
+   * role_outputs is a Quick Edit run. The renderer uses this to
+   * tag the sidebar row distinctly without needing to fetch the full
+   * iteration record.
+   */
+  mode: 'full' | 'quick'
 }
 
 export function listIterations(
@@ -160,23 +167,38 @@ export function listIterations(
   const rows = db
     .prepare(
       `SELECT id, iteration_number, user_prompt, status, traffic_light,
-              started_at, duration_ms, total_cost_usd
+              started_at, duration_ms, total_cost_usd, role_outputs_json
        FROM iterations
        WHERE workspace_id = ?
        ORDER BY iteration_number DESC
        LIMIT ? OFFSET ?`,
     )
     .all(workspaceId, limit, offset) as Array<Record<string, unknown>>
-  return rows.map((r) => ({
-    id: r.id as string,
-    iteration_number: r.iteration_number as number,
-    user_prompt: r.user_prompt as string,
-    status: r.status as IterationStatus,
-    traffic_light: (r.traffic_light as IterationTrafficLight | null) ?? null,
-    started_at: r.started_at as number,
-    duration_ms: (r.duration_ms as number | null) ?? null,
-    total_cost_usd: (r.total_cost_usd as number | null) ?? null,
-  }))
+  return rows.map((r) => {
+    let mode: 'full' | 'quick' = 'full'
+    try {
+      const outputs = JSON.parse(r.role_outputs_json as string) as Record<
+        string,
+        unknown
+      >
+      const keys = Object.keys(outputs)
+      if (keys.length === 1 && keys[0] === 'coder') mode = 'quick'
+    } catch {
+      // Bad JSON in DB — treat as full and move on. Old rows
+      // pre-quick-edit obviously fall into this branch too.
+    }
+    return {
+      id: r.id as string,
+      iteration_number: r.iteration_number as number,
+      user_prompt: r.user_prompt as string,
+      status: r.status as IterationStatus,
+      traffic_light: (r.traffic_light as IterationTrafficLight | null) ?? null,
+      started_at: r.started_at as number,
+      duration_ms: (r.duration_ms as number | null) ?? null,
+      total_cost_usd: (r.total_cost_usd as number | null) ?? null,
+      mode,
+    }
+  })
 }
 
 function parseRow(row: Record<string, unknown>): IterationRecord {

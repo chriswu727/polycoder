@@ -29,6 +29,7 @@ type IterationRow = {
   duration_ms: number | null
   total_cost_usd: number | null
   started_at: number
+  mode: 'full' | 'quick'
 }
 
 const VerdictDot: FC<{ v: IterationRow['traffic_light'] | undefined; size?: number }> = ({
@@ -479,6 +480,23 @@ export const Sidebar: FC<{
                   >
                     iter {String(h.iteration_number).padStart(2, '0')}
                   </span>
+                  {h.mode === 'quick' ? (
+                    <span
+                      className="pc-mono"
+                      style={{
+                        fontSize: 9.5,
+                        color: 'var(--accent)',
+                        background: 'var(--accent-soft)',
+                        border: '1px solid oklch(from var(--accent) l c h / 0.30)',
+                        padding: '1px 5px',
+                        borderRadius: 4,
+                        letterSpacing: '0.04em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Quick
+                    </span>
+                  ) : null}
                   <span style={{ flex: 1 }} />
                   <span
                     className="pc-mono"

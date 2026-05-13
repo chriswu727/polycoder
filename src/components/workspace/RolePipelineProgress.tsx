@@ -191,11 +191,84 @@ const TimelineRow: FC<{
 
 export const RolePipelineProgress: FC<{ onAbort?: () => void }> = ({ onAbort }) => {
   const status = useIterationStore((s) => s.status)
+  const mode = useIterationStore((s) => s.mode)
   const roleProgress = useIterationStore((s) => s.roleProgress)
   const cost = useIterationStore((s) => s.cumulativeCostUsd)
   const costFormat = usePreferencesStore((s) => s.costFormat)
 
   if (status === 'idle') return null
+
+  // Quick Edit running state: render a much lighter panel — just
+  // "Coder is making the change…" with a pulse + cost so far + Stop.
+  // The 8-role timeline would be misleading (7 roles never run).
+  if (mode === 'quick') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div
+          style={{
+            padding: '14px 16px',
+            borderBottom: '1px solid var(--hairline)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 8,
+              background: 'var(--accent-soft)',
+              color: 'var(--accent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <IconSparkle size={14} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 500 }}>
+              Quick edit in progress
+            </div>
+            <div
+              className="pc-mono"
+              style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}
+            >
+              Coder is reading + editing · {formatCost(cost, costFormat)} so far
+            </div>
+          </div>
+          {onAbort && status === 'running' ? (
+            <button className="pc-btn" data-size="sm" onClick={onAbort}>
+              <IconStop size={11} /> Stop
+            </button>
+          ) : null}
+        </div>
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--ink-3)',
+              textAlign: 'center',
+              maxWidth: 280,
+              lineHeight: 1.5,
+            }}
+          >
+            This usually finishes in 5-15 seconds. Watch the preview pane —
+            it'll auto-reload when the change lands.
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const completedCount = ROLE_ORDER.filter(
     (r) => roleProgress[r]?.status === 'completed',

@@ -5,6 +5,8 @@ import type { FC, ReactNode } from 'react'
 
 import { IconArrowUp } from '@/components/icons.js'
 
+export type ComposerMode = 'full' | 'quick'
+
 export const ChatBubble: FC<{
   from: 'user' | 'team'
   meta?: string
@@ -52,18 +54,43 @@ export const ChatBubble: FC<{
   )
 }
 
+const MODE_LABEL: Record<ComposerMode, string> = {
+  full: 'Full team',
+  quick: 'Quick edit',
+}
+
+const MODE_HINT: Record<ComposerMode, string> = {
+  full: 'All 8 roles weigh in. 5-15 min, ~$0.10-0.20 / iter.',
+  quick: 'Coder only — fast targeted change. ~10s, ~$0.001 / iter.',
+}
+
+const MODE_PLACEHOLDER: Record<ComposerMode, string> = {
+  full: 'Tell your team what to build or change…',
+  quick: 'What small change do you want? e.g. "fix the off-by-one in foo.ts"',
+}
+
 export const ChatComposer: FC<{
-  onSend: (text: string) => void
+  onSend: (text: string, mode: ComposerMode) => void
   disabled?: boolean
   placeholder?: string
   presetLabel?: string
-}> = ({ onSend, disabled = false, placeholder = "Tell your team what to build or change…", presetLabel }) => {
+  mode: ComposerMode
+  onModeChange: (mode: ComposerMode) => void
+}> = ({
+  onSend,
+  disabled = false,
+  placeholder,
+  presetLabel,
+  mode,
+  onModeChange,
+}) => {
   const [val, setVal] = useState('')
   const send = (): void => {
     if (!val.trim()) return
-    onSend(val.trim())
+    onSend(val.trim(), mode)
     setVal('')
   }
+  const ph = placeholder ?? MODE_PLACEHOLDER[mode]
   return (
     <div
       style={{
@@ -72,6 +99,48 @@ export const ChatComposer: FC<{
         background: 'var(--bg-2)',
       }}
     >
+      {/* Mode segmented control. Lives above the composer card so it
+       *  reads as a discrete affordance rather than a setting buried
+       *  in the input's chrome. */}
+      <div
+        role="tablist"
+        aria-label="Iteration mode"
+        style={{
+          display: 'inline-flex',
+          gap: 0,
+          padding: 3,
+          background: 'var(--surface-2)',
+          border: '1px solid var(--border)',
+          borderRadius: 9,
+          marginBottom: 8,
+        }}
+      >
+        {(['quick', 'full'] as ComposerMode[]).map((m) => (
+          <button
+            key={m}
+            role="tab"
+            aria-selected={mode === m}
+            onClick={() => onModeChange(m)}
+            disabled={disabled}
+            className="pc-mono"
+            style={{
+              padding: '4px 10px',
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 500,
+              border: 'none',
+              cursor: 'pointer',
+              background: mode === m ? 'var(--surface)' : 'transparent',
+              color: mode === m ? 'var(--ink)' : 'var(--ink-3)',
+              boxShadow: mode === m ? 'var(--shadow-1)' : 'none',
+              transition: 'background 120ms ease, color 120ms ease',
+            }}
+          >
+            {MODE_LABEL[m]}
+          </button>
+        ))}
+      </div>
+
       <div
         style={{
           background: 'var(--surface)',
@@ -90,7 +159,7 @@ export const ChatComposer: FC<{
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send()
           }}
-          placeholder={placeholder}
+          placeholder={ph}
           disabled={disabled}
           rows={3}
           style={{
@@ -116,9 +185,18 @@ export const ChatComposer: FC<{
         >
           <span
             className="pc-mono"
-            style={{ fontSize: 10.5, color: 'var(--ink-3)' }}
+            style={{
+              fontSize: 10.5,
+              color: 'var(--ink-3)',
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+            title={MODE_HINT[mode]}
           >
-            {presetLabel ? `${presetLabel} preset` : ''}
+            {presetLabel ? `${presetLabel} preset · ` : ''}
+            {MODE_HINT[mode]}
           </span>
           <span style={{ flex: 1 }} />
           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
