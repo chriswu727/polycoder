@@ -9,36 +9,25 @@
 
 ## Status
 
-- ✅ **Design phase complete.** All design and flow documents are
-  drafted. SPEC, ADRs (1-13), 8 role prompts + shared preamble,
-  3 implementation specs (providers / tools / orchestrator), this
-  build plan, and the project map.
-- 🟡 **Implementation phase: V0.1 Layers A-I complete.**
-  - ✅ Layer A — Repo scaffolding (5/5)
-  - ✅ Layer B — Data model + persistence (6/6)
-  - ✅ Layer C — Provider abstraction (11/11)
-  - ✅ Layer D — Secret manager (4/4)
-  - ✅ Layer E — Tool framework + 10 V0 tools (15/15)
-  - ✅ Layer F — Role harness (9/9)
-  - ✅ Layer G — Pipeline orchestrator (13/13)
-  - ✅ Layer H — Settings UI (6/6)
-  - ✅ Layer I — Workspace UI / chat view (8/8) — full
-    interactive end-to-end: prompt → live role progress →
-    Communicator output + traffic light + disagreement cards
-  - ✅ Layer J — End-to-end + packaging (4/4): smoke verified
-    against real DeepSeek+GLM ($0.12/run, 6min, all 8 roles green);
-    Mac arm64 .app bundle builds; README rewritten; v0.1.0 tagged
-    and released.
-- 🧪 **Test count**: 330 passing + 4 skipped (integration), 39 files.
+- ✅ **Design phase complete.** SPEC, ADRs (1-15), 8 role prompts +
+  shared preamble, 3 implementation specs (providers / tools /
+  orchestrator), this build plan, and the project map.
+- ✅ **V0.1 SHIPPED 2026-05-07** — Layers A-J done. Smoke verified
+  against real DeepSeek+GLM ($0.12/run, 6min, all 8 roles green);
+  Mac arm64 .app bundle builds; v0.1.0 tagged + released.
+- ✅ **V0.2 SHIPPED 2026-05-13** — IST benchmark (5 templates × 10
+  iters), V3 cosmic frontend, workspace lifecycle (rename / delete /
+  switcher), live preview iframe, macOS app menu, CJS preload +
+  renderer sandbox, one-command dev launch (`pnpm app`). v0.2.0
+  tagged + released.
+- 🧪 **Test count**: 367 passing + 9 skipped (integration), 47 files.
 - 🟢 **CI** green.
 
-🎉 **V0.1 SHIPPED 2026-05-07.**
-
-**Next concrete step**: V0.2.9 — actually run the 30 polycoder
-iterations (15 full + 15 coder-only). Spends ~$3 in real API
-calls; takes ~2 hrs of mostly-attended machine time. After that,
-V0.2.6 (manual Lovable runs) and V0.2.10/.11 (MAR + writeup) can
-land in any order.
+**Next concrete step**: V0.3 — local sandbox (WebContainer or e2b)
+so the produced app runs in-app without depending on the user's
+local filesystem. Also: inline workspace-rename UI (replace
+`window.prompt`), L2 expandable team-discussion view, multi-iter
+resume.
 
 ---
 
