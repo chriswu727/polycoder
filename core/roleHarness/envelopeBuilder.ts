@@ -33,7 +33,26 @@ export type BuildInputEnvelopeArgs = {
 
 export function buildInputEnvelope(args: BuildInputEnvelopeArgs): string {
   const { role, iteration } = args
-  const lines: string[] = [`<role-input role="${role}" iteration="${iteration}">`]
+  const lines: string[] = []
+
+  // Translator-only: echo the user's verbatim prompt at the very top
+  // of the user message so the model can't drift into parroting
+  // worked examples from its system prompt. The role-input envelope
+  // still carries `task` (the same prompt) — the prelude is just a
+  // high-prominence anchor.
+  if (role === 'translator' && typeof args.task === 'string') {
+    lines.push(
+      '⚠️ THIS IS WHAT THE USER ACTUALLY WROTE — translate THIS, not any',
+      'example from your system prompt:',
+      '',
+      '<<<USER_PROMPT_START>>>',
+      args.task,
+      '<<<USER_PROMPT_END>>>',
+      '',
+    )
+  }
+
+  lines.push(`<role-input role="${role}" iteration="${iteration}">`)
 
   if (args.project_memory) {
     lines.push('  <project_memory>')

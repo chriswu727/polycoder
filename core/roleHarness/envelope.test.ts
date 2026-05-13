@@ -14,10 +14,16 @@ describe('buildInputEnvelope', () => {
       project_memory: null,
       task: 'build me a todo app',
     })
-    expect(xml).toMatch(/^<role-input role="translator" iteration="1">/)
+    // Translator gets a prelude that echoes the user prompt at the
+    // very top so the model can't drift into parroting in-context
+    // examples — see envelopeBuilder.ts and the smoke 4 incident
+    // (round 2) in docs/quality-iteration.md.
+    expect(xml).toContain('<<<USER_PROMPT_START>>>')
+    expect(xml).toContain('build me a todo app')
+    expect(xml).toContain('<<<USER_PROMPT_END>>>')
+    expect(xml).toContain('<role-input role="translator" iteration="1">')
     expect(xml).toContain('<project_memory>null</project_memory>')
     expect(xml).toContain('<task>')
-    expect(xml).toContain('build me a todo app')
     expect(xml.endsWith('</role-input>')).toBe(true)
   })
 
