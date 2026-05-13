@@ -26,6 +26,8 @@ export const IPC_CHANNELS = {
   ITERATION_GET: 'polycoder.iteration.get',
   /** Single-Coder fast path. Skips the 8-role pipeline. */
   ITERATION_QUICK_EDIT: 'polycoder.iteration.quickEdit',
+  /** Restore the workspace files to their pre-iteration state. */
+  ITERATION_REVERT: 'polycoder.iteration.revert',
   /** Main → renderer push channel for pipeline events. */
   ITERATION_EVENT: 'polycoder.iteration.event',
 

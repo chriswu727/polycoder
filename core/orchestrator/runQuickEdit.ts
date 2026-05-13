@@ -42,6 +42,10 @@ import {
   appendIterationMessages,
   loadIterationMessages,
 } from '../../data/iterationMessages.js'
+import {
+  appendFileSnapshots,
+  type FileSnapshot,
+} from '../../data/iterationFileSnapshots.js'
 import { PipelineEventBus } from './events.js'
 import { parseAtMentions, formatMentionsContextBlock } from './atFileMentions.js'
 import { loadProjectRules, formatRulesAddendum } from './projectRules.js'
@@ -333,24 +337,38 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
   const files_changed = Array.from(filesTouched).sort()
   const trafficLight = finalStatus === 'completed' ? 'green' : 'red'
 
+  // Build per-file pre/post snapshots once, reuse for both the
+  // envelope's diff and the persisted iteration_file_snapshots row
+  // that powers the revert action.
+  const fileSnapshots: FileSnapshot[] = files_changed.map((p) => {
+    const pre = preSnapshots.has(p) ? preSnapshots.get(p) ?? null : null
+    const abs = isAbsolute(p) ? p : resolve(args.workspace.workspace_root, p)
+    let post: string | null = null
+    try {
+      if (existsSync(abs)) post = readFileSync(abs, 'utf8')
+    } catch {
+      post = null
+    }
+    return { display_path: p, pre_content: pre, post_content: post }
+  })
+
   // Synthesize a minimal Coder envelope so the existing renderer can
   // show this as an iteration result without bespoke wiring. Each
   // file's content_or_diff carries a unified diff against the pre-
   // edit snapshot so the UI can render it inline.
   const synthesizedPayload: CoderPayload = {
-    files_changed: files_changed.map((p) => {
-      const pre = preSnapshots.get(p)
-      const abs = isAbsolute(p) ? p : resolve(args.workspace.workspace_root, p)
-      let post = ''
-      try {
-        if (existsSync(abs)) post = readFileSync(abs, 'utf8')
-      } catch {
-        post = ''
-      }
-      const action: 'create' | 'edit' = pre === null || pre === undefined ? 'create' : 'edit'
-      const diff = createPatch(p, pre ?? '', post, '', '', { context: 3 })
+    files_changed: fileSnapshots.map((s) => {
+      const action: 'create' | 'edit' = s.pre_content === null ? 'create' : 'edit'
+      const diff = createPatch(
+        s.display_path,
+        s.pre_content ?? '',
+        s.post_content ?? '',
+        '',
+        '',
+        { context: 3 },
+      )
       return {
-        path: p,
+        path: s.display_path,
         action,
         reason: 'Quick Edit',
         content_or_diff: diff,
@@ -359,6 +377,11 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
     files_skipped: [],
     uncertainties: [],
     follow_up_needed: [],
+  }
+
+  // Persist snapshots for revert.
+  if (fileSnapshots.length > 0) {
+    appendFileSnapshots(args.db, iteration.id, fileSnapshots)
   }
   const envelope: RoleOutputEnvelope = {
     role: QUICK_EDIT_ROLE,

@@ -119,6 +119,26 @@ CREATE TABLE IF NOT EXISTS iteration_messages (
 CREATE INDEX IF NOT EXISTS idx_iteration_messages
   ON iteration_messages(iteration_id, seq);
 
+-- ─── Iteration file snapshots ───────────────────────────────────────
+-- Pre-edit + post-edit content per file touched by an iteration.
+-- Stored so the user can one-click revert a Quick Edit they didn't
+-- like. Capped per file at 1 MB; oversize files store NULL content
+-- (revert will refuse with a friendly message).
+--
+-- pre_content NULL  ⇒ file did not exist before this iter (was created)
+-- post_content NULL ⇒ file was deleted (V0 tools don't delete, future)
+
+CREATE TABLE IF NOT EXISTS iteration_file_snapshots (
+  iteration_id   TEXT NOT NULL REFERENCES iterations(id) ON DELETE CASCADE,
+  display_path   TEXT NOT NULL,
+  pre_content    TEXT,
+  post_content   TEXT,
+  PRIMARY KEY (iteration_id, display_path)
+);
+
+CREATE INDEX IF NOT EXISTS idx_iteration_file_snapshots
+  ON iteration_file_snapshots(iteration_id);
+
 -- ─── Cost records ───────────────────────────────────────────────────
 -- One row per role invocation. Aggregated for per-iteration and
 -- per-workspace totals; raw rows kept for audit.

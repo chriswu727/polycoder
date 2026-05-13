@@ -9,6 +9,7 @@ import type { WebContents } from 'electron'
 import type { KeyStore } from '../secrets/keystore.js'
 import { runIteration, type ProviderFactory } from '@core/orchestrator/runIteration.js'
 import { runQuickEdit } from '@core/orchestrator/runQuickEdit.js'
+import { revertIteration, type RevertResult } from '@core/orchestrator/revertIteration.js'
 import { PipelineEventBus } from '@core/orchestrator/events.js'
 import { getHydratedWorkspace } from '../../data/workspace.js'
 import { getHydratedSecret } from '../../data/secrets.js'
@@ -67,6 +68,9 @@ export type QuickEditRequest = {
 export type QuickEditResponse =
   | { ok: true; iteration_id: string; iteration_number: number }
   | { ok: false; error: string }
+
+export type RevertIterationRequest = { iteration_id: string }
+export type RevertIterationResponse = RevertResult
 
 // Renderer-bound event payload for ipcRenderer.on
 export type RendererPipelineEvent = PipelineEvent & {
@@ -343,6 +347,13 @@ export function handleGetIteration(
     cost: totalsByIteration(deps.db, req.iteration_id),
     cost_records: listCostRecordsForIteration(deps.db, req.iteration_id),
   }
+}
+
+export function handleRevertIteration(
+  deps: PipelineHandlerDeps,
+  req: RevertIterationRequest,
+): RevertIterationResponse {
+  return revertIteration(deps.db, req.iteration_id)
 }
 
 // Forwarding helper for main.ts to pipe events into the renderer.

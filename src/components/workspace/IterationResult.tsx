@@ -610,6 +610,40 @@ const QuickEditResult: FC<{ onContinue?: (() => void) | undefined }> = ({ onCont
   const iterationId = useIterationStore((s) => s.iteration_id)
   const error = useIterationStore((s) => s.error)
   const costFormat = usePreferencesStore.getState().costFormat
+  const [revertState, setRevertState] = useState<
+    | { kind: 'idle' }
+    | { kind: 'confirm' }
+    | { kind: 'running' }
+    | { kind: 'done'; restored: number; deleted: number }
+    | { kind: 'error'; message: string }
+  >({ kind: 'idle' })
+
+  async function doRevert(): Promise<void> {
+    if (!iterationId) return
+    setRevertState({ kind: 'running' })
+    try {
+      const res = await window.polycoder.iteration.revert({
+        iteration_id: iterationId,
+      })
+      if (!res.ok) {
+        setRevertState({
+          kind: 'error',
+          message: res.error ?? 'revert failed',
+        })
+        return
+      }
+      setRevertState({
+        kind: 'done',
+        restored: res.restored.length,
+        deleted: res.deleted.length,
+      })
+    } catch (e) {
+      setRevertState({
+        kind: 'error',
+        message: e instanceof Error ? e.message : String(e),
+      })
+    }
+  }
 
   // Failure branch — surface the error inline. Quick Edit failures
   // don't pass through the role-pipeline failure messages list; this
@@ -713,20 +747,130 @@ const QuickEditResult: FC<{ onContinue?: (() => void) | undefined }> = ({ onCont
 
       <FilesChangedSection files={result.files_changed} changes={changes} />
 
-      {onContinue && iterationId ? (
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+        {onContinue && iterationId ? (
+          <button
+            className="pc-btn"
+            data-variant="ghost"
+            onClick={onContinue}
+          >
+            <IconArrowRight size={12} /> Continue this thread
+          </button>
+        ) : null}
+        {iterationId && result.files_changed.length > 0 ? (
+          <RevertControl
+            state={revertState}
+            onRequest={() => setRevertState({ kind: 'confirm' })}
+            onConfirm={() => void doRevert()}
+            onCancel={() => setRevertState({ kind: 'idle' })}
+          />
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+const RevertControl: FC<{
+  state:
+    | { kind: 'idle' }
+    | { kind: 'confirm' }
+    | { kind: 'running' }
+    | { kind: 'done'; restored: number; deleted: number }
+    | { kind: 'error'; message: string }
+  onRequest: () => void
+  onConfirm: () => void
+  onCancel: () => void
+}> = ({ state, onRequest, onConfirm, onCancel }) => {
+  if (state.kind === 'idle') {
+    return (
+      <button
+        className="pc-btn"
+        data-variant="ghost"
+        onClick={onRequest}
+        style={{ color: 'var(--red)' }}
+      >
+        <IconRefresh size={12} /> Revert this edit
+      </button>
+    )
+  }
+  if (state.kind === 'confirm') {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 8px',
+          background: 'var(--red-soft)',
+          border: '1px solid oklch(from var(--red) l c h / 0.30)',
+          borderRadius: 8,
+          fontSize: 12,
+        }}
+      >
+        <span style={{ color: 'var(--ink-2)' }}>
+          Restore files to pre-edit state?
+        </span>
+        <button
+          className="pc-btn"
+          data-size="sm"
+          onClick={onConfirm}
+          style={{
+            background: 'var(--red)',
+            color: 'white',
+            borderColor: 'var(--red)',
+          }}
+        >
+          Revert
+        </button>
         <button
           className="pc-btn"
           data-variant="ghost"
-          onClick={onContinue}
-          style={{
-            alignSelf: 'flex-start',
-            gap: 6,
-          }}
+          data-size="sm"
+          onClick={onCancel}
         >
-          <IconArrowRight size={12} /> Continue this thread
+          Cancel
         </button>
-      ) : null}
-    </div>
+      </div>
+    )
+  }
+  if (state.kind === 'running') {
+    return (
+      <span
+        className="pc-mono"
+        style={{ fontSize: 11, color: 'var(--ink-3)' }}
+      >
+        reverting…
+      </span>
+    )
+  }
+  if (state.kind === 'done') {
+    const detail =
+      state.restored + state.deleted === 0
+        ? 'nothing to restore'
+        : `${state.restored} restored${state.deleted > 0 ? `, ${state.deleted} deleted` : ''}`
+    return (
+      <span
+        className="pc-mono"
+        style={{ fontSize: 11, color: 'var(--green)' }}
+      >
+        ✓ {detail}
+      </span>
+    )
+  }
+  return (
+    <span
+      className="pc-mono"
+      style={{ fontSize: 11, color: 'var(--red)' }}
+    >
+      revert failed: {state.message.slice(0, 80)}
+    </span>
   )
 }
 

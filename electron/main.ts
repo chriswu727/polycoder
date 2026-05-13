@@ -54,12 +54,14 @@ import {
   handleListIterations,
   handleGetIteration,
   handleQuickEdit,
+  handleRevertIteration,
   makeWebContentsForwarder,
   type StartIterationRequest,
   type AbortIterationRequest,
   type ListIterationsRequest,
   type GetIterationRequest,
   type QuickEditRequest,
+  type RevertIterationRequest,
 } from './ipc/pipelineHandlers.js'
 import type Database from 'better-sqlite3'
 
@@ -217,6 +219,20 @@ function setupIpcHandlers(database: Database.Database): void {
     IPC_CHANNELS.ITERATION_QUICK_EDIT,
     (e, req: QuickEditRequest) =>
       handleQuickEdit(
+        {
+          ...deps,
+          forwardEvent: makeWebContentsForwarder(
+            IPC_CHANNELS.ITERATION_EVENT,
+            e.sender,
+          ),
+        },
+        req,
+      ),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.ITERATION_REVERT,
+    (e, req: RevertIterationRequest) =>
+      handleRevertIteration(
         {
           ...deps,
           forwardEvent: makeWebContentsForwarder(
