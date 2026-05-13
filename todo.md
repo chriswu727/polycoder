@@ -20,13 +20,23 @@
   switcher), live preview iframe, macOS app menu, CJS preload +
   renderer sandbox, one-command dev launch (`pnpm app`). v0.2.0
   tagged + released.
-- 🧪 **Test count**: 367 passing + 9 skipped (integration), 47 files.
+- 🟡 **V0.3 in progress 2026-05-13** — Quick Edit suite:
+  - W: runQuickEdit single-Coder primitive (~10s vs 5min full pipeline)
+  - X: composer mode toggle (Quick vs Full) + per-mode result panels
+  - Y: live tool-call stream (each tool invocation rendered as it happens)
+  - Z: @file mention parser + context injection
+  - AA: `.polycoder/rules.md` workspace-level user instructions
+  - BB: unified diff preview inline in the result panel
+  - CC: conversation continuation ("Continue this thread")
+  - DD: one-click revert (restores files to pre-iter state)
+- 🧪 **Test count**: 394 passing + 9 skipped (integration), 51 files.
 - 🟢 **CI** green.
 
-**Next concrete step**: V0.3 — local sandbox (WebContainer or e2b)
-so the produced app runs in-app without depending on the user's
-local filesystem. Also: L2 expandable team-discussion view,
-multi-iter resume.
+**Next concrete step**: code viewer / file tree (foundation for
+Cursor-style Cmd+K on selection). After that: hunk-by-hunk diff
+apply approval, @folder mention type, multi-iter resume for full
+pipeline, L2 expandable team-discussion view, local WebContainer
+sandbox.
 
 ---
 

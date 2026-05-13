@@ -11,6 +11,33 @@ Bolt, v0, Cursor) leave open.
 
 ## Status
 
+🟢 **V0.3 in progress (2026-05-13)** — Quick Edit suite shipped on
+top of V0.2. polycoder now has a Copilot/Cursor-baseline daily-
+driver loop alongside the 8-role pipeline:
+
+| Mode             | Cost / iter   | Latency  | Use it for                        |
+| ---------------- | ------------- | -------- | --------------------------------- |
+| **Quick Edit**   | ~$0.001-0.01  | 5-15s    | Targeted change, "fix this", riff |
+| **Full pipeline**| ~$0.10-0.20   | 5-15 min | New feature, production-quality   |
+
+Quick Edit features (Copilot/Cursor-baseline):
+- **Single-Coder fast path** — bypasses the 8-role review.
+- **Live tool-call stream** — "Reading src/auth.ts" appears in
+  real-time, not 10s after the fact.
+- **@file mentions** — pin context with `@src/auth.ts`; resolves
+  workspace-relative paths, injects content up front.
+- **Unified diff preview** — every changed file shows colored +/-
+  inline, no need to leave the app.
+- **Conversation continuation** — "Continue this thread" button
+  on a completed Quick Edit feeds the prior turn's full context
+  into the next call. Model knows what it just did.
+- **One-click revert** — restores pre-edit content for every file
+  the iteration touched; deletes files it created. No git dance.
+
+Project-level (works for both modes):
+- **`.polycoder/rules.md`** — workspace-level user instructions.
+  Falls back to POLYCODER.md / AGENTS.md / CLAUDE.md if absent.
+
 🟢 **V0.2 shipped (2026-05-13)** — V0.1 skeleton + IST benchmark +
 V3 cosmic frontend. End-to-end verified against real DeepSeek + GLM
 API keys; produces real code in a real workspace.
@@ -63,16 +90,22 @@ pnpm app             # launches Electron + Vite, auto-rebuilds ABI
 
 In the app:
 
-1. Create a workspace (point it at a real, empty directory).
+1. Create a workspace (point it at a real, empty directory, or an
+   existing project root if you want Quick Edit to operate on it).
 2. **Settings → Secrets** → Add API keys (DeepSeek / Qwen / GLM /
    Anthropic / OpenAI-compat).
 3. **Settings → Team** → Click **Quick Setup: Budget** (or
    China-Pro / Mixed), or assign each of the 8 roles manually.
 4. **Workspace** → type a prompt → **Send**.
-5. Watch the 8 role rows light up live as the pipeline runs.
-6. Read Communicator's user-facing summary; check **Files changed**
-   for what Coder wrote. The right pane shows a live preview iframe
-   pointing at the workspace.
+   - **Quick edit** (default) → single Coder model, 5-15s. Best
+     for "fix the X in @path/to/file" requests.
+   - **Full team** → all 8 roles, 5-15 min. Best for "build me a
+     new feature" or production-quality work.
+5. Watch tool calls stream in (Quick Edit) or the 8 role rows
+   light up live (full pipeline).
+6. Read the result + diff inline. Hit **Continue this thread** to
+   refine without re-priming, or **Revert this edit** if it went
+   wrong. The right pane shows a live preview iframe.
 
 API keys are stored in your **OS keychain** (macOS Keychain Services,
 Windows Credential Manager, Linux Secret Service). They never touch
@@ -216,9 +249,14 @@ For the full design see [`SPEC.md`](./SPEC.md) +
   V3 cosmic frontend; workspace lifecycle (rename / delete /
   switcher); live preview iframe; macOS app menu; CJS preload +
   renderer sandbox.
-- **V0.3** — Local sandbox (WebContainer or e2b) so the produced
-  app runs in-app without depending on the user's filesystem.
-  L2 expandable team-discussion view. Multi-iter resume.
+- **V0.3 (in progress)** — Quick Edit suite (single-Coder fast
+  path + live tool-call stream + @file mentions + diff preview +
+  conversation continuation + one-click revert + `.polycoder/
+  rules.md`). Brings the daily-driver loop to Copilot/Cursor
+  baseline alongside the 8-role pipeline. Still TODO: code
+  viewer / file tree, Cmd+K on selection, multi-iter resume for
+  the full pipeline, L2 expandable team-discussion view, local
+  WebContainer sandbox.
 - **V0.4** — More providers (Doubao / Kimi / MiniMax), custom
   prompt overrides, project memory inspector, multi-iteration
   resume.
