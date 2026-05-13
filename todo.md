@@ -25,9 +25,8 @@
 
 **Next concrete step**: V0.3 — local sandbox (WebContainer or e2b)
 so the produced app runs in-app without depending on the user's
-local filesystem. Also: inline workspace-rename UI (replace
-`window.prompt`), L2 expandable team-discussion view, multi-iter
-resume.
+local filesystem. Also: L2 expandable team-discussion view,
+multi-iter resume.
 
 ---
 

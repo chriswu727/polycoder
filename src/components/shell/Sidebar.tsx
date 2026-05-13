@@ -2,12 +2,13 @@
 // scrolling list of past iterations for the current workspace, then
 // a Settings entry at the bottom.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FC } from 'react'
 
 import { useWorkspaceStore } from '@/stores/workspace.js'
 import { formatCost, usePreferencesStore } from '@/stores/preferences.js'
 import {
+  IconCheck,
   IconChevronDown,
   IconEdit,
   IconMoon,
@@ -15,6 +16,7 @@ import {
   IconSettings,
   IconSun,
   IconTrash,
+  IconX,
   Mark,
 } from '@/components/icons.js'
 
@@ -103,30 +105,58 @@ export const Sidebar: FC<{
   const costFormat = usePreferencesStore((s) => s.costFormat)
   const [wsOpen, setWsOpen] = useState(false)
   const [iters, setIters] = useState<IterationRow[]>([])
+  // Inline edit state for the workspace dropdown — these replace
+  // window.prompt / window.confirm so the V3 cosmic surface stays
+  // intact and Escape / Enter behave the way the user expects from
+  // a native macOS app menu, not a 1995 browser dialog.
+  const [renameValue, setRenameValue] = useState('')
+  const [renameError, setRenameError] = useState<string | null>(null)
+  const [editing, setEditing] = useState<'idle' | 'rename' | 'confirmDelete'>(
+    'idle',
+  )
+  const renameInputRef = useRef<HTMLInputElement | null>(null)
 
-  async function onDeleteCurrent(): Promise<void> {
-    if (!current) return
-    const confirmed = window.confirm(
-      `Delete "${current.name}"? This removes the workspace + secrets from polycoder. Files on disk at the workspace folder stay.`,
-    )
-    if (!confirmed) return
-    await deleteWorkspace(current.id)
+  function resetEdit(): void {
+    setEditing('idle')
+    setRenameError(null)
   }
 
-  async function onRenameCurrent(): Promise<void> {
+  function openRename(): void {
     if (!current) return
-    const next = window.prompt(
-      'Rename this project to:',
-      current.name,
-    )
-    if (!next || next.trim() === '' || next === current.name) return
-    try {
-      await renameWorkspace(current.id, next.trim())
-    } catch (e) {
-      window.alert(
-        `Couldn't rename: ${e instanceof Error ? e.message : String(e)}`,
-      )
+    setRenameValue(current.name)
+    setRenameError(null)
+    setEditing('rename')
+    // Focus + select-all next frame, after the input mounts.
+    requestAnimationFrame(() => {
+      const el = renameInputRef.current
+      if (el) {
+        el.focus()
+        el.select()
+      }
+    })
+  }
+
+  async function commitRename(): Promise<void> {
+    if (!current) return
+    const next = renameValue.trim()
+    if (next === '' || next === current.name) {
+      resetEdit()
+      return
     }
+    try {
+      await renameWorkspace(current.id, next)
+      resetEdit()
+      setWsOpen(false)
+    } catch (e) {
+      setRenameError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  async function commitDelete(): Promise<void> {
+    if (!current) return
+    await deleteWorkspace(current.id)
+    resetEdit()
+    setWsOpen(false)
   }
 
   useEffect(() => {
@@ -160,7 +190,11 @@ export const Sidebar: FC<{
         }}
       >
         <button
-          onClick={() => setWsOpen(!wsOpen)}
+          onClick={() => {
+            const next = !wsOpen
+            setWsOpen(next)
+            if (!next) resetEdit()
+          }}
           className="pc-btn"
           style={{
             width: '100%',
@@ -253,16 +287,13 @@ export const Sidebar: FC<{
             >
               <IconPlus size={12} /> New project
             </button>
-            {current ? (
+            {current && editing === 'idle' ? (
               <>
                 <button
                   className="pc-btn"
                   data-variant="ghost"
                   style={{ width: '100%', justifyContent: 'flex-start' }}
-                  onClick={() => {
-                    setWsOpen(false)
-                    void onRenameCurrent()
-                  }}
+                  onClick={openRename}
                 >
                   <IconEdit size={12} /> Rename current project
                 </button>
@@ -274,14 +305,115 @@ export const Sidebar: FC<{
                     justifyContent: 'flex-start',
                     color: 'var(--red)',
                   }}
-                  onClick={() => {
-                    setWsOpen(false)
-                    void onDeleteCurrent()
-                  }}
+                  onClick={() => setEditing('confirmDelete')}
                 >
                   <IconTrash size={12} /> Delete current project
                 </button>
               </>
+            ) : null}
+            {current && editing === 'rename' ? (
+              <div style={{ padding: '4px 4px 2px' }}>
+                <div
+                  className="pc-eyebrow"
+                  style={{ marginBottom: 6, paddingLeft: 2 }}
+                >
+                  Rename project
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    ref={renameInputRef}
+                    className="pc-input"
+                    value={renameValue}
+                    onChange={(e) => {
+                      setRenameValue(e.target.value)
+                      if (renameError) setRenameError(null)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void commitRename()
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault()
+                        resetEdit()
+                      }
+                    }}
+                    style={{ flex: 1, minWidth: 0 }}
+                    placeholder="Project name"
+                    aria-label="Project name"
+                  />
+                  <button
+                    className="pc-btn"
+                    data-size="sm"
+                    onClick={() => void commitRename()}
+                    aria-label="Save rename"
+                    title="Save (Enter)"
+                  >
+                    <IconCheck size={11} />
+                  </button>
+                  <button
+                    className="pc-btn"
+                    data-variant="ghost"
+                    data-size="sm"
+                    onClick={resetEdit}
+                    aria-label="Cancel rename"
+                    title="Cancel (Esc)"
+                  >
+                    <IconX size={11} />
+                  </button>
+                </div>
+                {renameError ? (
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--red)',
+                      marginTop: 6,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {renameError}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {current && editing === 'confirmDelete' ? (
+              <div style={{ padding: '6px 4px 2px' }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--ink-2)',
+                    lineHeight: 1.45,
+                    padding: '0 2px 8px',
+                  }}
+                >
+                  Delete <strong>{current.name}</strong>? This removes the
+                  workspace + secrets from polycoder. Files on disk stay.
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    className="pc-btn"
+                    data-size="sm"
+                    onClick={() => void commitDelete()}
+                    style={{
+                      flex: 1,
+                      justifyContent: 'center',
+                      background: 'var(--red)',
+                      color: 'white',
+                      borderColor: 'var(--red)',
+                    }}
+                  >
+                    <IconTrash size={11} /> Delete
+                  </button>
+                  <button
+                    className="pc-btn"
+                    data-variant="ghost"
+                    data-size="sm"
+                    onClick={resetEdit}
+                    style={{ justifyContent: 'center' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             ) : null}
           </div>
         ) : null}

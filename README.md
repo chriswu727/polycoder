@@ -218,7 +218,7 @@ For the full design see [`SPEC.md`](./SPEC.md) +
   renderer sandbox.
 - **V0.3** — Local sandbox (WebContainer or e2b) so the produced
   app runs in-app without depending on the user's filesystem.
-  Inline workspace-rename UI. L2 expandable team-discussion view.
+  L2 expandable team-discussion view. Multi-iter resume.
 - **V0.4** — More providers (Doubao / Kimi / MiniMax), custom
   prompt overrides, project memory inspector, multi-iteration
   resume.
