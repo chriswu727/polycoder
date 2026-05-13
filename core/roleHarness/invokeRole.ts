@@ -41,8 +41,9 @@ const TOOL_CALLS_BY_ROLE: Partial<Record<RoleType, number>> = {
   // static-HTML smoke iteration — repeatedly reading every file as
   // it tried to bootstrap Vitest the project didn't need. Tight
   // budget + the no-bootstrap rule in 07-test-runner.md §7.4a are
-  // the matched fix.
-  test_runner: 15,
+  // the matched fix. 15 turned out a hair too tight (smoke 8 hit
+  // 16/15 on a 4-feature app). 25 still well under the V0 ceiling.
+  test_runner: 25,
   // Coder default 40. After §7.7 scope-sizing at Architect, the
   // smoke-3 todo-app run finished Coder in ~10 tool calls; the
   // baseline (no scope-sizing) hit 41 and ran out. Default is

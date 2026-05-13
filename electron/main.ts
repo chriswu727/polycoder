@@ -19,6 +19,12 @@ import { getWorkspace } from '../data/workspace.js'
 import { OsKeystore } from './secrets/keystore.js'
 import { IPC_CHANNELS } from './ipc/channels.js'
 import {
+  listWorkspaceFiles,
+  readWorkspaceFile,
+  type WorkspaceFileEntry,
+  type ReadWorkspaceFileResult,
+} from './workspaceFiles.js'
+import {
   getPreviewUrl,
   setPreviewRoot,
   stopPreviewServer,
@@ -141,6 +147,25 @@ function setupIpcHandlers(database: Database.Database): void {
       if (!ws) return null
       setPreviewRoot(ws.workspace_root)
       return await getPreviewUrl()
+    },
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.WORKSPACE_LIST_FILES,
+    (_e, req: { workspace_id: string }): WorkspaceFileEntry[] => {
+      const ws = getWorkspace(database, req.workspace_id)
+      if (!ws) return []
+      return listWorkspaceFiles(ws.workspace_root)
+    },
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.WORKSPACE_READ_FILE,
+    (
+      _e,
+      req: { workspace_id: string; path: string },
+    ): ReadWorkspaceFileResult => {
+      const ws = getWorkspace(database, req.workspace_id)
+      if (!ws) return { ok: false, error: 'workspace not found' }
+      return readWorkspaceFile(ws.workspace_root, req.path)
     },
   )
 

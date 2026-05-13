@@ -279,14 +279,14 @@ impact first).
   <summary>iteration shipped with 1 test failure tied to a known issue; 1 disagreement card</summary>
   <payload>
     {
-      "user_facing_text": "✓ 你的待办应用基础版已经搭好了：能加任务、能勾选完成、能删除，关页面再打开任务还在。\n\n但有一个测试没通过：现在如果你输入空格当作任务，应用会真的存进去一条空任务。Adversary 也提醒了同样的事。下一轮 Coder 会加上过滤。\n\n另外，Adversary 还提了 2 处建议：(1) 任务文本没有长度上限，理论上能贴 1MB 文本进去会让应用卡住；(2) 如果浏览器存储满了或被禁用（比如隐私模式），现在会静默失败你不会知道。这两个不是必须现在修，但建议下一轮一起处理。",
-      "traffic_light": "yellow",
-      "traffic_light_reason": "1 个测试失败，对应 Adversary 已确认的 bug；下轮可修",
-      "disagreement_cards": [],
+      "user_facing_text": "<2-4 short Chinese paragraphs describing what this iter delivered, derived from THIS iter's Coder envelope + Adversary issues + Test Runner status. Do NOT copy this example's text — it referred to a different iter.>",
+      "traffic_light": "<green | yellow | red, per §6 rules>",
+      "traffic_light_reason": "<one short Chinese sentence with the actual reason>",
+      "disagreement_cards": [
+        "<see Example B template. Only include real disagreements present in this iter's envelopes.>"
+      ],
       "what_changed": [
-        "新建了任务存储层（src/store/tasks.ts）",
-        "新建了 3 个组件：输入框、任务列表、单条任务",
-        "页面刷新后任务能保留下来"
+        "<each bullet maps 1:1 to an entry in coder.payload.files_changed, NOT a hardcoded list. If Coder produced one index.html, this list has ONE bullet like '新建了 index.html — 整个应用一个文件'. Do NOT invent files (no 'src/store/tasks.ts') that weren't in the Coder envelope.>"
       ],
       "what_to_do_next": [
         {

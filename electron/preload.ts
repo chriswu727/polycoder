@@ -70,6 +70,20 @@ const polycoderAPI = {
     previewUrl(req: { workspace_id: string }): Promise<string | null> {
       return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_PREVIEW_URL, req) as Promise<string | null>
     },
+    listFiles(req: { workspace_id: string }): Promise<Array<{ path: string; size: number; language: string }>> {
+      return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_LIST_FILES, req) as Promise<
+        Array<{ path: string; size: number; language: string }>
+      >
+    },
+    readFile(req: { workspace_id: string; path: string }): Promise<
+      | { ok: true; path: string; size: number; content: string; language: string; truncated: boolean }
+      | { ok: false; error: string }
+    > {
+      return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_READ_FILE, req) as Promise<
+        | { ok: true; path: string; size: number; content: string; language: string; truncated: boolean }
+        | { ok: false; error: string }
+      >
+    },
   },
 
   roles: {

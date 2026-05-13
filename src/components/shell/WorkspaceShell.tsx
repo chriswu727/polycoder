@@ -17,6 +17,7 @@ import { ChatBubble, ChatComposer, ChatPane, type ComposerMode } from './ChatPan
 import { RolePipelineProgress } from '@/components/workspace/RolePipelineProgress.js'
 import { IterationResult } from '@/components/workspace/IterationResult.js'
 import { PreviewPane, type PreviewState } from '@/components/workspace/PreviewPane.js'
+import { CodeBrowser } from '@/components/workspace/CodeBrowser.js'
 import {
   Chorus,
   IconArrowRight,
@@ -366,6 +367,7 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
     /** When set, the next send through the composer is a Quick Edit
      *  follow-up that continues the named iteration's conversation. */
     const [followUpOf, setFollowUpOf] = useState<string | null>(null)
+    const [rightTab, setRightTab] = useState<'preview' | 'code'>('preview')
 
     useEffect(() => {
       const off = bootstrap(() => useWorkspaceStore.getState().current?.id ?? null)
@@ -496,8 +498,62 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
                   />
                 )}
               </div>
-              <div style={{ overflow: 'hidden' }}>
-                <PreviewPane state={previewState} />
+              <div
+                style={{
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                {/* Preview / Code tab strip. The preview iframe shows
+                 *  the running app; the code browser shows the
+                 *  workspace files the pipeline produced. Vibe coders
+                 *  want both. */}
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 4,
+                    padding: '6px 8px',
+                    background: 'var(--bg-2)',
+                    borderBottom: '1px solid var(--hairline)',
+                  }}
+                  role="tablist"
+                  aria-label="Right pane mode"
+                >
+                  {(['preview', 'code'] as const).map((t) => (
+                    <button
+                      key={t}
+                      role="tab"
+                      aria-selected={rightTab === t}
+                      onClick={() => setRightTab(t)}
+                      className="pc-mono"
+                      style={{
+                        padding: '3px 10px',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 500,
+                        border: '1px solid',
+                        borderColor:
+                          rightTab === t ? 'var(--border)' : 'transparent',
+                        cursor: 'pointer',
+                        background:
+                          rightTab === t ? 'var(--surface)' : 'transparent',
+                        color: rightTab === t ? 'var(--ink)' : 'var(--ink-3)',
+                        boxShadow: rightTab === t ? 'var(--shadow-1)' : 'none',
+                        textTransform: 'capitalize',
+                      }}
+                    >
+                      {t === 'preview' ? 'Preview' : 'Code'}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                  {rightTab === 'preview' ? (
+                    <PreviewPane state={previewState} />
+                  ) : (
+                    <CodeBrowser />
+                  )}
+                </div>
               </div>
             </div>
           </div>

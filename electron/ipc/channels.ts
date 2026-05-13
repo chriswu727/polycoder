@@ -14,6 +14,10 @@ export const IPC_CHANNELS = {
   /** Boot (if needed) + point the preview HTTP server at this
    *  workspace, then return the URL the renderer should iframe. */
   WORKSPACE_PREVIEW_URL: 'polycoder.workspace.previewUrl',
+  /** List files under the workspace root (filtered, capped). */
+  WORKSPACE_LIST_FILES: 'polycoder.workspace.listFiles',
+  /** Read a single workspace file's content for the code viewer. */
+  WORKSPACE_READ_FILE: 'polycoder.workspace.readFile',
 
   // Roles
   ROLE_SET_ASSIGNMENT: 'polycoder.role.setAssignment',
