@@ -44,6 +44,15 @@ export type IterationStateStatus =
  */
 export type IterationMode = 'full' | 'quick'
 
+export type ToolCallLogEntry = {
+  ts: number
+  tool_name: string
+  args_brief: string
+  duration_ms: number
+  ok: boolean
+  error_brief?: string
+}
+
 export type IterationState = {
   status: IterationStateStatus
   mode: IterationMode
@@ -53,6 +62,10 @@ export type IterationState = {
   roleProgress: Record<RoleType, RoleProgress>
   cumulativeCostUsd: number
   conflicts: number
+  /** Live log of tool calls for the current iteration. Cleared on
+   *  reset / iteration_started; appended to on tool_call_progress
+   *  events. Renders under the running header in the right pane. */
+  toolCallLog: ToolCallLogEntry[]
   result: PipelineResultCompleted | PipelineResultAborted | PipelineResultFailed | null
   error: string | null
 }
@@ -98,6 +111,7 @@ function initial(): IterationState {
     roleProgress: emptyRoleProgress(),
     cumulativeCostUsd: 0,
     conflicts: 0,
+    toolCallLog: [],
     result: null,
     error: null,
   }
@@ -298,6 +312,7 @@ function reduceEvent(
         roleProgress: emptyRoleProgress(),
         cumulativeCostUsd: 0,
         conflicts: 0,
+        toolCallLog: [],
         result: null,
         error: null,
       })
@@ -346,6 +361,22 @@ function reduceEvent(
     }
     case 'cost_update': {
       set({ cumulativeCostUsd: event.cumulative_usd })
+      return
+    }
+    case 'tool_call_progress': {
+      const entry: ToolCallLogEntry = {
+        ts: Date.now(),
+        tool_name: event.tool_name,
+        args_brief: event.args_brief,
+        duration_ms: event.duration_ms,
+        ok: event.ok,
+        ...(event.error_brief !== undefined
+          ? { error_brief: event.error_brief }
+          : {}),
+      }
+      // Cap log length so a runaway model can't unbound state size.
+      const next = [...state.toolCallLog, entry].slice(-50)
+      set({ toolCallLog: next })
       return
     }
     case 'conflict_detected': {

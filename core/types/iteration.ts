@@ -111,3 +111,12 @@ export type PipelineEvent =
   | { type: 'iteration_aborted'; result: PipelineResultAborted }
   | { type: 'iteration_failed'; result: PipelineResultFailed }
   | { type: 'cost_update'; cumulative_usd: number }
+  | {
+      type: 'tool_call_progress'
+      role: z.infer<typeof RoleTypeSchema>
+      tool_name: string
+      args_brief: string
+      duration_ms: number
+      ok: boolean
+      error_brief?: string
+    }

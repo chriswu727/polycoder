@@ -34,6 +34,7 @@ function emptyState(): IterationState {
     roleProgress,
     cumulativeCostUsd: 0,
     conflicts: 0,
+    toolCallLog: [],
     result: null,
     error: null,
   }

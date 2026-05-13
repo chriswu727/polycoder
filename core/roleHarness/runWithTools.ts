@@ -17,6 +17,25 @@ import type { BuiltTool, ToolContext, ToolName } from '@tools/ToolDef.js'
 import { ToolError } from '@tools/ToolDef.js'
 import { toolToSchema } from '@tools/toJsonSchema.js'
 
+/**
+ * Per-tool-call observation hook. Fires AFTER each tool has run
+ * (including failures). Lets callers stream live progress to the UI
+ * — runQuickEdit pipes these into the PipelineEventBus as
+ * `tool_call_progress` events so Quick Edit's running panel can
+ * show "Reading src/auth.ts → Editing src/auth.ts → Done" in
+ * real-time instead of going dark for 10s.
+ */
+export type ToolCallObservation = {
+  tool_name: string
+  /** A short human summary derived from the arguments (e.g. file
+   *  path for read/write_file, command head for bash). */
+  args_brief: string
+  duration_ms: number
+  ok: boolean
+  /** Concise error description when ok is false. */
+  error_brief?: string
+}
+
 export type RunWithToolsArgs = {
   provider: ModelProvider
   model: string
@@ -26,6 +45,8 @@ export type RunWithToolsArgs = {
   ctx: ToolContext
   /** Cap to prevent infinite tool-call loops. Default 20. */
   maxToolCalls?: number
+  /** Optional observer for each tool call. */
+  onToolCall?: (obs: ToolCallObservation) => void
 }
 
 export type RunWithToolsResult = {
@@ -101,12 +122,26 @@ export async function runWithTools(
           throw new ToolLoopBudgetExceeded(toolCallsMade, maxToolCalls)
         }
 
+        const tcStartedAt = Date.now()
         const result = await executeToolCall(tc, toolByName, ctx)
         messages.push({
           role: 'tool',
           content: result.content,
           tool_call_id: tc.id,
         })
+
+        if (args.onToolCall) {
+          const obs: ToolCallObservation = {
+            tool_name: tc.name,
+            args_brief: briefForArgs(tc.name, tc.arguments),
+            duration_ms: Date.now() - tcStartedAt,
+            ok: !result.content.startsWith('{"error":'),
+          }
+          if (!obs.ok) {
+            obs.error_brief = extractErrorBrief(result.content)
+          }
+          args.onToolCall(obs)
+        }
       }
       // Loop again — model gets to react to tool results.
       continue
@@ -180,4 +215,43 @@ async function executeToolCall(
 
 function serializeToolError(err: { code: string; message: string }): string {
   return JSON.stringify({ error: err })
+}
+
+/**
+ * Tiny per-tool argument summarizer. Used only for the ToolCall
+ * observation surface; never for the message that actually goes back
+ * to the model.
+ */
+function briefForArgs(toolName: string, args: unknown): string {
+  if (!args || typeof args !== 'object') return ''
+  const a = args as Record<string, unknown>
+  switch (toolName) {
+    case 'read_file':
+    case 'write_file':
+    case 'edit_file':
+      return typeof a.path === 'string' ? a.path : ''
+    case 'bash': {
+      const cmd = typeof a.command === 'string' ? a.command : ''
+      return cmd.length > 60 ? cmd.slice(0, 60) + '…' : cmd
+    }
+    case 'run_test_suite':
+      return typeof a.command === 'string' ? a.command : 'test suite'
+    case 'read_history':
+      return typeof a.iteration_id === 'string' ? a.iteration_id : ''
+    case 'read_project_memory':
+      return ''
+    default: {
+      const v = Object.values(a)[0]
+      return typeof v === 'string' ? v.slice(0, 60) : ''
+    }
+  }
+}
+
+function extractErrorBrief(content: string): string {
+  try {
+    const parsed = JSON.parse(content) as { error?: { message?: string } }
+    return parsed.error?.message?.slice(0, 120) ?? 'error'
+  } catch {
+    return 'error'
+  }
 }

@@ -184,6 +184,19 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
       tools,
       ctx,
       maxToolCalls: args.maxToolCalls ?? QUICK_EDIT_MAX_TOOL_CALLS,
+      onToolCall: (obs) => {
+        events.emit({
+          type: 'tool_call_progress',
+          role: QUICK_EDIT_ROLE,
+          tool_name: obs.tool_name,
+          args_brief: obs.args_brief,
+          duration_ms: obs.duration_ms,
+          ok: obs.ok,
+          ...(obs.error_brief !== undefined
+            ? { error_brief: obs.error_brief }
+            : {}),
+        })
+      },
     })
     summary = run.finalText.trim() || '(no summary)'
     toolCallsMade = run.toolCallsMade
