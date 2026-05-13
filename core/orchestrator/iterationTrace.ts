@@ -26,6 +26,7 @@ export type StartTraceArgs = {
 export function startIterationTrace(args: StartTraceArgs): {
   iteration_id: string
   iteration_number: number
+  startedAt: number
 } {
   const record = startIterationDb(args.db, {
     workspace_id: args.workspace_id,
@@ -34,6 +35,7 @@ export function startIterationTrace(args: StartTraceArgs): {
   return {
     iteration_id: record.id,
     iteration_number: record.iteration_number,
+    startedAt: record.started_at,
   }
 }
 

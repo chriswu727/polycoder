@@ -184,7 +184,15 @@ export const PRESET_DEFINITIONS: Record<PresetId, RoleToProviderModel> = {
     designer: { provider: 'glm', model: 'glm-4-flash' },
     architect: { provider: 'deepseek', model: 'deepseek-chat' },
     coder: { provider: 'deepseek', model: 'deepseek-coder' },
-    adversary: { provider: 'glm', model: 'glm-4-plus' },
+    // Originally glm-4-plus for cross-provider diversity vs Coder.
+    // Reality check: glm-4-plus typically requires a paid resource
+    // pack on zhipuai; smoke 6/7 hit HTTP 429 余额不足. Switching
+    // to deepseek-chat keeps cross-MODEL diversity (chat vs coder
+    // within deepseek) on the always-available DeepSeek API while
+    // a vibe-coder evaluates the product. For real cross-provider
+    // adversarial review users should pick the china_pro or mixed
+    // preset, which uses Qwen-Max / Claude-Opus respectively.
+    adversary: { provider: 'deepseek', model: 'deepseek-chat' },
     long_term_critic: { provider: 'deepseek', model: 'deepseek-chat' },
     test_runner: { provider: 'deepseek', model: 'deepseek-chat' },
     communicator: { provider: 'glm', model: 'glm-4-flash' },

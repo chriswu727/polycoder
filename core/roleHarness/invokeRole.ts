@@ -32,7 +32,11 @@ export const MAX_TOOL_CALLS_PER_ROLE = 40
  */
 const TOOL_CALLS_BY_ROLE: Partial<Record<RoleType, number>> = {
   adversary: 12,
-  long_term_critic: 12,
+  // 12 was too tight in practice — Round 2 smoke 7 LTC hit 13/12
+  // analyzing a 300-LOC index.html (read_file + read_project_memory
+  // + a few re-reads). 18 still beats the V0 default of 40 by a
+  // wide margin.
+  long_term_critic: 18,
   // Test Runner was burning ~500K input tokens / $0.05 on a single
   // static-HTML smoke iteration — repeatedly reading every file as
   // it tried to bootstrap Vitest the project didn't need. Tight

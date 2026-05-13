@@ -288,9 +288,25 @@ export async function runIteration(
       }),
     ])
 
+    // Persist successful envelopes; surface failures explicitly so
+    // Communicator can't quietly invent content for missing roles.
+    // (Smoke 6 expense-tracker incident: Adversary failed silently
+    // and Communicator fabricated a "login rate-limiting" risk.)
+    const reviewerFailures: Array<{ role: 'adversary' | 'long_term_critic' | 'test_runner'; reason: string; detail: string }> = []
     if (adv2.status === 'success') outputs.adversary = adv2.envelope
+    else reviewerFailures.push({ role: 'adversary', reason: adv2.reason, detail: adv2.detail })
     if (ltc2.status === 'success') outputs.long_term_critic = ltc2.envelope
+    else reviewerFailures.push({ role: 'long_term_critic', reason: ltc2.reason, detail: ltc2.detail })
     if (tr2.status === 'success') outputs.test_runner = tr2.envelope
+    else reviewerFailures.push({ role: 'test_runner', reason: tr2.reason, detail: tr2.detail })
+
+    for (const f of reviewerFailures) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[runIteration] reviewer ${f.role} FAILED — ${f.reason}: ${f.detail.slice(0, 240)}`,
+      )
+      events.emit({ type: 'role_failed', role: f.role, error: `${f.reason}: ${f.detail}` })
+    }
 
     // If ALL three reviewers failed, that's a hard failure.
     if (
@@ -326,7 +342,43 @@ export async function runIteration(
       envelopeInputs: {
         project_memory,
         prior_outputs: outputs,
-        task: { conflicts },
+        task: {
+          conflicts,
+          // Real stats from the orchestrator's metering. The
+          // Communicator prompt §7.6 reads from here — without this
+          // it would invent stats from prompt examples, which
+          // happened in smoke 6 (fake "Claude-Opus-4-6 / $0.04 / 87s"
+          // values copied straight from §10 example).
+          stats: {
+            total_cost_usd: Number(costTracker.iterationTotal().toFixed(4)),
+            duration_seconds: Math.round(
+              (Date.now() - trace.startedAt) / 1000,
+            ),
+            // role → model mapping for ONLY the roles whose envelopes
+            // are present (i.e. actually ran successfully). Missing
+            // roles must not appear here.
+            models_by_role: Object.fromEntries(
+              (Object.entries(outputs) as Array<
+                [string, { model?: string } | undefined]
+              >)
+                .filter(([, e]) => e?.model)
+                .map(([role, e]) => [role, e?.model]),
+            ),
+            // Convenience: distinct model names that participated.
+            models_used: [
+              ...new Set(
+                Object.values(outputs)
+                  .map((e) => e?.model)
+                  .filter((m): m is string => !!m),
+              ),
+            ],
+            // Reviewer roles whose envelopes are MISSING (they
+            // failed or were skipped). Communicator must not
+            // fabricate output for these.
+            reviewers_missing: ['adversary', 'long_term_critic', 'test_runner']
+              .filter((r) => !(r in outputs)),
+          },
+        },
         ui_lang: args.workspace.ui_lang,
       },
     })
