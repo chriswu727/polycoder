@@ -47,6 +47,12 @@ export type RunWithToolsArgs = {
   maxToolCalls?: number
   /** Optional observer for each tool call. */
   onToolCall?: (obs: ToolCallObservation) => void
+  /**
+   * Fires synchronously BEFORE the tool runs. Lets callers snapshot
+   * pre-state — e.g. capture original file contents so a unified
+   * diff can be computed after edit_file mutates them.
+   */
+  onBeforeToolCall?: (toolName: string, args: unknown) => void
 }
 
 export type RunWithToolsResult = {
@@ -122,6 +128,7 @@ export async function runWithTools(
           throw new ToolLoopBudgetExceeded(toolCallsMade, maxToolCalls)
         }
 
+        args.onBeforeToolCall?.(tc.name, tc.arguments)
         const tcStartedAt = Date.now()
         const result = await executeToolCall(tc, toolByName, ctx)
         messages.push({

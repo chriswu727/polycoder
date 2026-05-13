@@ -167,9 +167,184 @@ const VerdictBanner: FC<{ verdict: Verdict; summary: string; meta?: string }> = 
   )
 }
 
-const FilesChangedSection: FC<{ files: string[] }> = ({ files }) => {
+type FileChangeEnvelope = {
+  path: string
+  action?: 'create' | 'edit' | 'delete' | string
+  reason?: string
+  content_or_diff?: string
+}
+
+/**
+ * Render a unified diff as colored +/- lines. Strips the patch
+ * header (the line numbers in the @@ marker are not interesting to
+ * a vibe coder reviewing what changed).
+ */
+const DiffBlock: FC<{ diff: string }> = ({ diff }) => {
+  const lines = diff.split('\n')
+  // Skip the Index/===/--- /+++ patch header — the first 4 lines
+  // are diff-format boilerplate.
+  const renderable = lines.filter(
+    (l) =>
+      !l.startsWith('Index:') &&
+      !l.startsWith('===') &&
+      !l.startsWith('---') &&
+      !l.startsWith('+++') &&
+      l !== '\\ No newline at end of file',
+  )
+  if (renderable.every((l) => l.trim() === '')) {
+    return (
+      <div
+        style={{
+          padding: '10px 14px',
+          fontSize: 12,
+          color: 'var(--ink-3)',
+          fontStyle: 'italic',
+        }}
+      >
+        (no textual diff to show)
+      </div>
+    )
+  }
+  return (
+    <pre
+      className="pc-mono"
+      style={{
+        margin: 0,
+        padding: '8px 0',
+        fontSize: 11.5,
+        lineHeight: 1.45,
+        background: 'var(--bg-2)',
+        overflowX: 'auto',
+        maxHeight: 320,
+        overflowY: 'auto',
+      }}
+    >
+      {renderable.map((line, i) => {
+        const isAdd = line.startsWith('+')
+        const isDel = line.startsWith('-')
+        const isHunk = line.startsWith('@@')
+        const fg = isAdd
+          ? 'var(--green)'
+          : isDel
+            ? 'var(--red)'
+            : isHunk
+              ? 'var(--ink-3)'
+              : 'var(--ink-2)'
+        const bg = isAdd
+          ? 'oklch(from var(--green) l c h / 0.10)'
+          : isDel
+            ? 'oklch(from var(--red) l c h / 0.10)'
+            : 'transparent'
+        return (
+          <div
+            key={i}
+            style={{
+              padding: '0 14px',
+              background: bg,
+              color: fg,
+              whiteSpace: 'pre',
+            }}
+          >
+            {line || ' '}
+          </div>
+        )
+      })}
+    </pre>
+  )
+}
+
+const FileChangeRow: FC<{ change: FileChangeEnvelope }> = ({ change }) => {
   const [open, setOpen] = useState(false)
-  if (files.length === 0) return null
+  const hasDiff =
+    !!change.content_or_diff && change.content_or_diff.trim() !== ''
+  return (
+    <div style={{ borderBottom: '1px solid var(--hairline)' }}>
+      <button
+        onClick={() => hasDiff && setOpen(!open)}
+        disabled={!hasDiff}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '8px 14px',
+          fontSize: 12.5,
+          background: 'transparent',
+          border: 'none',
+          textAlign: 'left',
+          cursor: hasDiff ? 'pointer' : 'default',
+        }}
+      >
+        <span
+          className="pc-mono"
+          style={{
+            fontSize: 9.5,
+            padding: '1px 5px',
+            borderRadius: 4,
+            background:
+              change.action === 'create'
+                ? 'oklch(from var(--green) l c h / 0.15)'
+                : change.action === 'delete'
+                  ? 'oklch(from var(--red) l c h / 0.15)'
+                  : 'var(--surface-2)',
+            color:
+              change.action === 'create'
+                ? 'var(--green)'
+                : change.action === 'delete'
+                  ? 'var(--red)'
+                  : 'var(--ink-3)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+            minWidth: 36,
+            textAlign: 'center',
+          }}
+        >
+          {change.action ?? 'edit'}
+        </span>
+        <span className="pc-mono" style={{ color: 'var(--ink)' }}>
+          {change.path}
+        </span>
+        <span style={{ flex: 1 }} />
+        {hasDiff ? (
+          <span
+            style={{
+              color: 'var(--ink-3)',
+              transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
+              transition: 'transform 180ms',
+              display: 'inline-flex',
+            }}
+          >
+            <IconChevronDown size={12} />
+          </span>
+        ) : (
+          <button
+            className="pc-btn"
+            data-variant="ghost"
+            data-size="sm"
+            style={{ padding: '2px 6px' }}
+            title="Open in default app"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <IconEye size={11} />
+          </button>
+        )}
+      </button>
+      {open && hasDiff ? <DiffBlock diff={change.content_or_diff!} /> : null}
+    </div>
+  )
+}
+
+const FilesChangedSection: FC<{
+  files: string[]
+  changes?: FileChangeEnvelope[]
+}> = ({ files, changes }) => {
+  const [open, setOpen] = useState(false)
+  // If we have per-file change envelopes, prefer those (richer);
+  // otherwise fall back to the bare path list.
+  const list: FileChangeEnvelope[] = changes && changes.length > 0
+    ? changes
+    : files.map((p) => ({ path: p, action: 'edit' }))
+  if (list.length === 0) return null
   return (
     <div className="pc-card" style={{ padding: 0 }}>
       <button
@@ -192,7 +367,7 @@ const FilesChangedSection: FC<{ files: string[] }> = ({ files }) => {
             className="pc-mono"
             style={{ color: 'var(--ink-3)', fontWeight: 400, marginLeft: 4 }}
           >
-            · {files.length}
+            · {list.length}
           </span>
         </div>
         <span
@@ -208,32 +383,8 @@ const FilesChangedSection: FC<{ files: string[] }> = ({ files }) => {
       </button>
       {open ? (
         <div style={{ borderTop: '1px solid var(--hairline)' }}>
-          {files.map((path) => (
-            <div
-              key={path}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '8px 14px',
-                fontSize: 12.5,
-                borderBottom: '1px solid var(--hairline)',
-              }}
-            >
-              <span className="pc-mono" style={{ color: 'var(--ink)' }}>
-                {path}
-              </span>
-              <span style={{ flex: 1 }} />
-              <button
-                className="pc-btn"
-                data-variant="ghost"
-                data-size="sm"
-                style={{ padding: '2px 6px' }}
-                title="Open in default app"
-              >
-                <IconEye size={11} />
-              </button>
-            </div>
+          {list.map((c) => (
+            <FileChangeRow key={c.path} change={c} />
           ))}
         </div>
       ) : null}
@@ -507,6 +658,9 @@ const QuickEditResult: FC = () => {
     result.total_cost_usd,
     costFormat,
   )}`
+  const changes =
+    (coderEnvelope?.payload as { files_changed?: FileChangeEnvelope[] } | undefined)
+      ?.files_changed ?? []
 
   return (
     <div
@@ -556,7 +710,7 @@ const QuickEditResult: FC = () => {
         </div>
       </div>
 
-      <FilesChangedSection files={result.files_changed} />
+      <FilesChangedSection files={result.files_changed} changes={changes} />
     </div>
   )
 }
@@ -625,6 +779,11 @@ export const IterationResult: FC = () => {
   // as the schema's inferred shape (which matches DisagreementCardData).
   const disagreementCards = (communicator.disagreement_cards ?? []) as DisagreementCardData[]
 
+  const coderChanges =
+    (result.role_outputs.coder?.payload as
+      | { files_changed?: FileChangeEnvelope[] }
+      | undefined)?.files_changed ?? []
+
   return (
     <div
       className="scroll"
@@ -655,7 +814,7 @@ export const IterationResult: FC = () => {
 
       <SuggestionsSection suggestions={communicator.what_to_do_next} />
 
-      <FilesChangedSection files={result.files_changed} />
+      <FilesChangedSection files={result.files_changed} changes={coderChanges} />
     </div>
   )
 }

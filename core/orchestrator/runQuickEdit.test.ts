@@ -167,6 +167,70 @@ describe('runQuickEdit', () => {
     expect(Object.keys(outputs)).toEqual(['coder'])
   })
 
+  it('computes a unified diff for edited files', async () => {
+    // Pre-existing file, model edits it (write_file refuses overwrites
+    // — that's by-spec).
+    const provider = makeProvider([
+      toolCall('edit_file', {
+        path: 'src/index.ts',
+        old_string: 'export const greet = () => "hi"',
+        new_string: 'export const greet = () => "hello"',
+      }),
+      textOnly('Changed greet to return hello.'),
+    ])
+    const result = await runQuickEdit({
+      db,
+      keystore,
+      workspace,
+      instruction: 'change greet to say hello in @src/index.ts',
+      provider,
+      model: 'deepseek-chat',
+    })
+    expect(result.status).toBe('completed')
+
+    // Fetch persisted envelope and verify the diff was captured.
+    const row = db
+      .prepare('SELECT role_outputs_json FROM iterations WHERE id = ?')
+      .get(result.iteration_id) as { role_outputs_json: string }
+    const outputs = JSON.parse(row.role_outputs_json) as {
+      coder: { payload: { files_changed: Array<{ path: string; content_or_diff: string; action: string }> } }
+    }
+    const changed = outputs.coder.payload.files_changed
+    expect(changed).toHaveLength(1)
+    expect(changed[0]?.path).toBe('src/index.ts')
+    expect(changed[0]?.action).toBe('edit') // file existed before
+    // Unified diff has +/- markers and the old + new strings.
+    expect(changed[0]?.content_or_diff).toMatch(/^Index:/)
+    expect(changed[0]?.content_or_diff).toContain('-export const greet = () => "hi"')
+    expect(changed[0]?.content_or_diff).toContain('+export const greet = () => "hello"')
+  })
+
+  it('marks new files with action=create', async () => {
+    const provider = makeProvider([
+      toolCall('write_file', {
+        path: 'src/new.ts',
+        content: 'export const x = 1\n',
+      }),
+      textOnly('Added a new file.'),
+    ])
+    const result = await runQuickEdit({
+      db,
+      keystore,
+      workspace,
+      instruction: 'add a new file',
+      provider,
+      model: 'deepseek-chat',
+    })
+    if (result.status !== 'completed') throw new Error('expected completed')
+    const row = db
+      .prepare('SELECT role_outputs_json FROM iterations WHERE id = ?')
+      .get(result.iteration_id) as { role_outputs_json: string }
+    const outputs = JSON.parse(row.role_outputs_json) as {
+      coder: { payload: { files_changed: Array<{ path: string; action: string }> } }
+    }
+    expect(outputs.coder.payload.files_changed[0]?.action).toBe('create')
+  })
+
   it('records cost via cost_records table', async () => {
     const provider = makeProvider([textOnly('did nothing')])
     const result = await runQuickEdit({

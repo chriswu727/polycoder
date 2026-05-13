@@ -41,6 +41,9 @@ import { appendCostRecord } from '../../data/costRecords.js'
 import { PipelineEventBus } from './events.js'
 import { parseAtMentions, formatMentionsContextBlock } from './atFileMentions.js'
 import { loadProjectRules, formatRulesAddendum } from './projectRules.js'
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve, isAbsolute } from 'node:path'
+import { createPatch } from 'diff'
 
 const QUICK_EDIT_TOOLS = [
   'read_file',
@@ -141,6 +144,10 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
   })
 
   const filesTouched = new Set<string>()
+  // Pre-edit snapshots — keyed by display path. value === null means
+  // the file did not exist before the iteration (new file).
+  const preSnapshots = new Map<string, string | null>()
+
   const emitEvent = (e: ToolEvent): void => {
     if (e.type === 'side_effect') {
       // Stable formats — see tools/writeFile.ts + tools/editFile.ts.
@@ -148,6 +155,22 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
       const editMatch = /^edit_file (.+?): \d+ replacement/.exec(e.description)
       const m = writeMatch ?? editMatch
       if (m?.[1]) filesTouched.add(m[1])
+    }
+  }
+
+  const onBeforeToolCall = (toolName: string, toolArgs: unknown): void => {
+    if (toolName !== 'write_file' && toolName !== 'edit_file') return
+    const a = toolArgs as { path?: unknown }
+    if (typeof a.path !== 'string') return
+    const display = a.path
+    if (preSnapshots.has(display)) return
+    const abs = isAbsolute(display)
+      ? display
+      : resolve(args.workspace.workspace_root, display)
+    try {
+      preSnapshots.set(display, existsSync(abs) ? readFileSync(abs, 'utf8') : null)
+    } catch {
+      preSnapshots.set(display, null)
     }
   }
 
@@ -205,6 +228,7 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
       tools,
       ctx,
       maxToolCalls: args.maxToolCalls ?? QUICK_EDIT_MAX_TOOL_CALLS,
+      onBeforeToolCall,
       onToolCall: (obs) => {
         events.emit({
           type: 'tool_call_progress',
@@ -264,14 +288,28 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
   const trafficLight = finalStatus === 'completed' ? 'green' : 'red'
 
   // Synthesize a minimal Coder envelope so the existing renderer can
-  // show this as an iteration result without bespoke wiring.
+  // show this as an iteration result without bespoke wiring. Each
+  // file's content_or_diff carries a unified diff against the pre-
+  // edit snapshot so the UI can render it inline.
   const synthesizedPayload: CoderPayload = {
-    files_changed: files_changed.map((p) => ({
-      path: p,
-      action: 'edit',
-      reason: 'Quick Edit',
-      content_or_diff: '',
-    })),
+    files_changed: files_changed.map((p) => {
+      const pre = preSnapshots.get(p)
+      const abs = isAbsolute(p) ? p : resolve(args.workspace.workspace_root, p)
+      let post = ''
+      try {
+        if (existsSync(abs)) post = readFileSync(abs, 'utf8')
+      } catch {
+        post = ''
+      }
+      const action: 'create' | 'edit' = pre === null || pre === undefined ? 'create' : 'edit'
+      const diff = createPatch(p, pre ?? '', post, '', '', { context: 3 })
+      return {
+        path: p,
+        action,
+        reason: 'Quick Edit',
+        content_or_diff: diff,
+      }
+    }),
     files_skipped: [],
     uncertainties: [],
     follow_up_needed: [],
