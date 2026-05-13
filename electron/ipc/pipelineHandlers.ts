@@ -8,6 +8,7 @@ import type Database from 'better-sqlite3'
 import type { WebContents } from 'electron'
 import type { KeyStore } from '../secrets/keystore.js'
 import { runIteration, type ProviderFactory } from '@core/orchestrator/runIteration.js'
+import { runQuickEdit } from '@core/orchestrator/runQuickEdit.js'
 import { PipelineEventBus } from '@core/orchestrator/events.js'
 import { getHydratedWorkspace } from '../../data/workspace.js'
 import { getHydratedSecret } from '../../data/secrets.js'
@@ -50,6 +51,15 @@ export type ListIterationsResponse = ReturnType<typeof listIterations>
 export type GetIterationRequest = { iteration_id: string }
 export type GetIterationResponse =
   | { ok: true; record: ReturnType<typeof getIteration>; cost: ReturnType<typeof totalsByIteration>; cost_records: ReturnType<typeof listCostRecordsForIteration> }
+  | { ok: false; error: string }
+
+export type QuickEditRequest = {
+  workspace_id: string
+  instruction: string
+}
+
+export type QuickEditResponse =
+  | { ok: true; iteration_id: string; iteration_number: number }
   | { ok: false; error: string }
 
 // Renderer-bound event payload for ipcRenderer.on
@@ -192,6 +202,105 @@ function getActiveOrLatest(
   }
   const list = listIterations(db, workspace_id, { limit: 1 })
   return list[0] ?? null
+}
+
+export async function handleQuickEdit(
+  deps: PipelineHandlerDeps,
+  req: QuickEditRequest,
+): Promise<QuickEditResponse> {
+  if (activeIterations.has(req.workspace_id)) {
+    return {
+      ok: false,
+      error: `An iteration is already running for workspace ${req.workspace_id}.`,
+    }
+  }
+
+  const hydrated = getHydratedWorkspace(deps.db, req.workspace_id)
+  if (!hydrated) {
+    return { ok: false, error: `Workspace not found: ${req.workspace_id}` }
+  }
+
+  // Quick Edit always uses the Coder assignment — that's the role
+  // mapped to "make changes to code." If unconfigured, surface a
+  // friendly error so the renderer can route to Settings.
+  const coderAssignment = hydrated.role_assignments.coder
+  if (!coderAssignment.secret_id || !coderAssignment.model_id) {
+    return {
+      ok: false,
+      error:
+        'Quick Edit needs the Coder role configured. Open Settings → Team and assign a model to Coder first.',
+    }
+  }
+  const hydratedSecret = await getHydratedSecret(
+    deps.db,
+    deps.keystore,
+    req.workspace_id,
+    coderAssignment.secret_id,
+  )
+  if (!hydratedSecret) {
+    return {
+      ok: false,
+      error:
+        'Coder secret not found in the OS keychain. Re-add it under Settings → Secrets.',
+    }
+  }
+  const provider = buildProvider(hydratedSecret)
+
+  const abortController = new AbortController()
+  const bus = new PipelineEventBus()
+  let iterationId = ''
+  bus.subscribe((evt) => {
+    if (evt.type === 'iteration_started') {
+      iterationId = evt.iteration_id
+    }
+    deps.forwardEvent({
+      ...evt,
+      workspace_id: req.workspace_id,
+      iteration_id: iterationId,
+    })
+  })
+
+  void (async () => {
+    try {
+      await runQuickEdit({
+        db: deps.db,
+        keystore: deps.keystore,
+        workspace: hydrated,
+        instruction: req.instruction,
+        provider,
+        model: coderAssignment.model_id ?? '',
+        abort_signal: abortController.signal,
+        eventBus: bus,
+      })
+    } catch (e) {
+      // runQuickEdit handles its own errors and emits a failed event;
+      // any escape here is a programmer bug.
+      // eslint-disable-next-line no-console
+      console.error('runQuickEdit threw:', e)
+    } finally {
+      activeIterations.delete(req.workspace_id)
+    }
+  })()
+
+  // One tick for iteration_started to fire so we know the id.
+  await new Promise((r) => setTimeout(r, 0))
+
+  const iter = getActiveOrLatest(deps.db, req.workspace_id, iterationId)
+  if (!iter) {
+    return { ok: false, error: 'Quick Edit failed to register.' }
+  }
+
+  activeIterations.set(req.workspace_id, {
+    workspace_id: req.workspace_id,
+    iteration_id: iter.id,
+    abortController,
+  })
+
+  return {
+    ok: true,
+    iteration_id: iter.id,
+    iteration_number: iter.iteration_number,
+  }
 }
 
 export function handleAbortIteration(

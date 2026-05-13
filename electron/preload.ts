@@ -38,6 +38,8 @@ import type {
   ListIterationsResponse,
   GetIterationRequest,
   GetIterationResponse,
+  QuickEditRequest,
+  QuickEditResponse,
   RendererPipelineEvent,
 } from './ipc/pipelineHandlers.js'
 
@@ -89,6 +91,9 @@ const polycoderAPI = {
     },
     get(req: GetIterationRequest): Promise<GetIterationResponse> {
       return ipcRenderer.invoke(IPC_CHANNELS.ITERATION_GET, req) as Promise<GetIterationResponse>
+    },
+    quickEdit(req: QuickEditRequest): Promise<QuickEditResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.ITERATION_QUICK_EDIT, req) as Promise<QuickEditResponse>
     },
     /**
      * Subscribe to streaming pipeline events. Returns an unsubscribe
