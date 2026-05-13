@@ -494,6 +494,37 @@ export const IconMegaphone: FC<IconProps> = ({ size }) => (
   </Glyph>
 )
 
+export const IconSun: FC<IconProps> = ({ size }) => (
+  <Glyph size={size}>
+    <circle cx={8} cy={8} r={3} {...STROKE} />
+    <path
+      d="M8 1.5 L8 3 M8 13 L8 14.5 M14.5 8 L13 8 M3 8 L1.5 8 M12.5 3.5 L11.4 4.6 M4.6 11.4 L3.5 12.5 M12.5 12.5 L11.4 11.4 M4.6 4.6 L3.5 3.5"
+      {...STROKE}
+    />
+  </Glyph>
+)
+
+export const IconMoon: FC<IconProps> = ({ size }) => (
+  <Glyph size={size}>
+    <path d="M13 9.5 A5 5 0 0 1 6.5 3 A5.5 5.5 0 1 0 13 9.5 Z" {...STROKE} />
+  </Glyph>
+)
+
+export const IconTrash: FC<IconProps> = ({ size }) => (
+  <Glyph size={size}>
+    <path d="M3 4.5 L13 4.5 M5.5 4.5 L5.5 3 L10.5 3 L10.5 4.5 M4.5 4.5 L5.5 13.5 L10.5 13.5 L11.5 4.5 M6.5 7 L6.5 11.5 M9.5 7 L9.5 11.5"
+      {...STROKE}
+    />
+  </Glyph>
+)
+
+export const IconEdit: FC<IconProps> = ({ size }) => (
+  <Glyph size={size}>
+    <path d="M11 3 L13 5 L5 13 L2.5 13.5 L3 11 Z" {...STROKE} />
+    <path d="M10.5 3.5 L12.5 5.5" {...STROKE} />
+  </Glyph>
+)
+
 // Per-role glyph map. Keys are RoleType values from
 // @core/types/role.js, so consumers can do ROLE_ICONS[role].
 export const ROLE_ICONS: Record<RoleType, FC<IconProps>> = {

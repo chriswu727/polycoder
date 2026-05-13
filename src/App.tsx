@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react'
 import type { FC } from 'react'
 
 import { useWorkspaceStore } from '@/stores/workspace.js'
+import { usePreferencesStore } from '@/stores/preferences.js'
 import { FirstRun } from '@/components/setup/FirstRun.js'
 import { WorkspaceShell } from '@/components/shell/WorkspaceShell.js'
 import { Settings } from '@/components/settings/Settings.js'
@@ -133,12 +134,13 @@ export function App(): React.ReactElement {
     })()
   }, [refreshWorkspaces, selectWorkspace])
 
-  // Apply theme. V3 design defaults to DARK (cosmic premium is the
-  // primary canvas; light is a polished mirror). Toggle UI deferred
-  // to V0.1.2. The class is on <html> so design tokens cascade.
+  // Apply theme from the preferences store. Defaults to dark (V3
+  // design's primary canvas) on first run; user can flip via the
+  // sun/moon toggle in the sidebar. Persisted to localStorage.
+  const theme = usePreferencesStore((s) => s.theme)
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'dark')
-  }, [])
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
 
   // Mirror current workspace name into the OS window title.
   useEffect(() => {

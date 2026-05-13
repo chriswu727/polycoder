@@ -6,7 +6,16 @@ import { useEffect, useState } from 'react'
 import type { FC } from 'react'
 
 import { useWorkspaceStore } from '@/stores/workspace.js'
-import { Mark, IconChevronDown, IconPlus, IconSettings } from '@/components/icons.js'
+import { usePreferencesStore } from '@/stores/preferences.js'
+import {
+  IconChevronDown,
+  IconMoon,
+  IconPlus,
+  IconSettings,
+  IconSun,
+  IconTrash,
+  Mark,
+} from '@/components/icons.js'
 
 type IterationRow = {
   id: string
@@ -86,8 +95,20 @@ export const Sidebar: FC<{
   const workspaces = useWorkspaceStore((s) => s.workspaces)
   const current = useWorkspaceStore((s) => s.current)
   const selectWorkspace = useWorkspaceStore((s) => s.selectWorkspace)
+  const deleteWorkspace = useWorkspaceStore((s) => s.deleteWorkspace)
+  const theme = usePreferencesStore((s) => s.theme)
+  const toggleTheme = usePreferencesStore((s) => s.toggleTheme)
   const [wsOpen, setWsOpen] = useState(false)
   const [iters, setIters] = useState<IterationRow[]>([])
+
+  async function onDeleteCurrent(): Promise<void> {
+    if (!current) return
+    const confirmed = window.confirm(
+      `Delete "${current.name}"? This removes the workspace + secrets from polycoder. Files on disk at the workspace folder stay.`,
+    )
+    if (!confirmed) return
+    await deleteWorkspace(current.id)
+  }
 
   useEffect(() => {
     if (!current) {
@@ -213,6 +234,23 @@ export const Sidebar: FC<{
             >
               <IconPlus size={12} /> New project
             </button>
+            {current ? (
+              <button
+                className="pc-btn"
+                data-variant="ghost"
+                style={{
+                  width: '100%',
+                  justifyContent: 'flex-start',
+                  color: 'var(--red)',
+                }}
+                onClick={() => {
+                  setWsOpen(false)
+                  void onDeleteCurrent()
+                }}
+              >
+                <IconTrash size={12} /> Delete current project
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -311,7 +349,7 @@ export const Sidebar: FC<{
         )}
       </div>
 
-      {/* Bottom: settings */}
+      {/* Bottom: settings + theme toggle */}
       <div
         style={{
           padding: 10,
@@ -328,6 +366,17 @@ export const Sidebar: FC<{
           style={{ flex: 1, justifyContent: 'flex-start' }}
         >
           <IconSettings size={12} /> Settings
+        </button>
+        <button
+          onClick={toggleTheme}
+          className="pc-btn"
+          data-variant="ghost"
+          data-size="sm"
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          style={{ flex: '0 0 auto', padding: '4px 8px' }}
+        >
+          {theme === 'dark' ? <IconSun size={13} /> : <IconMoon size={13} />}
         </button>
       </div>
     </div>
