@@ -33,6 +33,16 @@ export const MAX_TOOL_CALLS_PER_ROLE = 40
 const TOOL_CALLS_BY_ROLE: Partial<Record<RoleType, number>> = {
   adversary: 12,
   long_term_critic: 12,
+  // Test Runner was burning ~500K input tokens / $0.05 on a single
+  // static-HTML smoke iteration — repeatedly reading every file as
+  // it tried to bootstrap Vitest the project didn't need. Tight
+  // budget + the no-bootstrap rule in 07-test-runner.md §7.4a are
+  // the matched fix.
+  test_runner: 15,
+  // Coder default 40. After §7.7 scope-sizing at Architect, the
+  // smoke-3 todo-app run finished Coder in ~10 tool calls; the
+  // baseline (no scope-sizing) hit 41 and ran out. Default is
+  // sufficient — no override needed.
 }
 
 function maxToolCallsFor(role: RoleType): number {

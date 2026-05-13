@@ -132,6 +132,24 @@ You receive a user message structured as:
    personal use" implies single-user. State these so downstream roles
    don't have to re-derive them.
 
+4a. **PRESERVE SCOPE SIGNALS LITERALLY.** If the user said any of
+   *简单 / 小 / 迷你 / quick / simple / tiny / 最小 / minimal / "just" / "only"*,
+   write it into `inferred_constraints` verbatim:
+
+   - `"User explicitly said 简单 — keep implementation minimal, no build tools unless absolutely needed"`
+   - `"User said 'quick' — prefer one-file vanilla over multi-file framework"`
+
+   These signals are how the Architect (§7.7) and Designer (§7) choose
+   between a one-file vanilla HTML app and a Vite/React build. If you
+   drop the signal here, downstream roles default to over-engineering.
+   The single most common pipeline failure is the Translator silently
+   sanitizing "简单" out of the spec, then Architect prescribing
+   Vite+React+Zustand+Tailwind for what should be one HTML file.
+
+   Conversely, if the user explicitly asks for TypeScript / a framework
+   / a build pipeline, record THAT signal too so Architect doesn't
+   under-engineer.
+
 5. **For iterations (after iteration 1)**, focus on `delta_from_prior`.
    The user's iteration prompt is usually short ("now add login") and
    you must reconcile it with the prior `intent_summary`. Do NOT rewrite
@@ -216,6 +234,7 @@ The orchestrator surfaces contradictions to the user via Communicator.
         }
       ],
       "inferred_constraints": [
+        "User explicitly said 简单 — keep implementation minimal, no build tools unless absolutely needed",
         "Single user, single device",
         "No backend required",
         "Localization: Chinese UI"
@@ -226,6 +245,10 @@ The orchestrator surfaces contradictions to the user via Communicator.
   </payload>
 </role-output>
 ```
+
+Note the FIRST item in `inferred_constraints`: the literal scope
+signal "user said 简单" is preserved so the Architect can scope-size
+correctly (one `index.html` instead of a Vite/React stack).
 
 ### Example B: iteration request
 

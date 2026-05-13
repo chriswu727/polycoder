@@ -112,9 +112,24 @@ Produce a UI plan like:
 ## 7. Operating principles
 
 1. **Vibe coders are non-technical.** Your design choices must be
-   *implementable* by an LLM-driven Coder using common UI libraries.
-   Default to **shadcn/ui + Tailwind** unless the project memory says
-   otherwise.
+   *implementable* by an LLM-driven Coder. **Match the request's
+   scope before picking a stack:**
+
+   - Translator's intent says "simple/简单/小/quick/tiny" or the
+     `must_have` list has ≤4 features and no shared state → propose
+     **plain semantic HTML + vanilla CSS**, NO component library.
+     Use native `<form>`, `<input>`, `<ul>/<li>`, `<button>` —
+     they look fine when styled.
+   - `must_have` has ≥5 features, multi-screen navigation, or
+     existing `project_memory` already commits to a framework →
+     propose **shadcn/ui + Tailwind**.
+   - The Architect (§7.7) will scope-size and may override your
+     stack downward to plain HTML. If your `style_choices` reach
+     for shadcn/Tailwind when the request is small, expect the
+     override and adjust — don't fight it.
+
+   When in doubt, choose the simpler primitive. Adding a library
+   you didn't need is harder to walk back than upgrading later.
 
 2. **Reuse over invention.** If `project_memory.components` already lists
    a component that fits, set `is_new: false` and reference it. Don't
@@ -188,14 +203,14 @@ Communicator.
 
 ## 10. Examples
 
-### Example A: First-iteration design for the todo app
+### Example A: Simple vibe-coder request — plain HTML, no library
 
 **Input** (translator_output's payload):
 ```json
 {
-  "intent_summary": "Personal todo list app with task creation and completion toggling",
-  "must_have": ["Input field to add", "List display", "Checkbox per task", "Strikethrough for done"],
-  "inferred_constraints": ["Single user", "No backend", "Chinese UI"]
+  "intent_summary": "Simple browser-only todo list",
+  "must_have": ["Add task", "Toggle done", "Delete task", "Persist across refresh"],
+  "inferred_constraints": ["User said 简单", "No backend", "Chinese UI"]
 }
 ```
 
@@ -204,37 +219,37 @@ Communicator.
 ```xml
 <role-output role="designer" iteration="1" model="claude-sonnet-4-6">
   <status>ok</status>
-  <summary>Single-screen mobile-first todo list with shadcn/ui primitives</summary>
+  <summary>Single-screen plain HTML todo list, no component library</summary>
   <payload>
     {
       "layout": {
-        "primary_view": "single-page vertical scroll, sticky input bar at top",
+        "primary_view": "single page, vertical stack: heading + add-task form + ul of tasks",
         "navigation_pattern": "none — single view",
-        "responsive_breakpoints": ["375px (mobile, primary)", "768px (tablet, max-width container)"]
+        "responsive_breakpoints": ["375px (mobile, primary)", "768px (tablet, max-width 480px container centered)"]
       },
       "components": [
         {
-          "name": "TaskInputBar",
-          "purpose": "Add a new task",
-          "structure": "row: text input (flex-1), submit button (icon-only, primary color)",
-          "props_summary": "onSubmit: (text: string) => void",
-          "states": ["empty", "filled", "submitting"],
+          "name": "AddTaskForm",
+          "purpose": "Add a new task — semantic HTML section, NOT a separate file",
+          "structure": "<form>: text <input placeholder='做点什么…' required> + submit <button>添加</button>. Submit triggers add via JS event listener.",
+          "props_summary": "n/a — plain HTML inside index.html",
+          "states": ["empty", "filled"],
           "is_new": true
         },
         {
-          "name": "TaskList",
-          "purpose": "Render all tasks",
-          "structure": "vertical stack of TaskItem rows; empty state shows centered hint text",
-          "props_summary": "tasks: Task[]",
+          "name": "TaskListSection",
+          "purpose": "Render all tasks — a <ul> section, NOT a separate file",
+          "structure": "<ul id='tasks'>; empty state is a <p class='empty-hint'>没有任务</p> shown when ul is empty",
+          "props_summary": "n/a",
           "states": ["with-tasks", "empty"],
           "is_new": true
         },
         {
-          "name": "TaskItem",
-          "purpose": "One task row with checkbox + label + delete",
-          "structure": "row: checkbox (left), label (flex-1, strikethrough when done), × delete button (right, on hover/swipe)",
-          "props_summary": "task: Task, onToggle, onDelete",
-          "states": ["default", "completed", "deleting"],
+          "name": "TaskRow",
+          "purpose": "One task row inside the <ul>",
+          "structure": "<li>: <input type='checkbox'> + <span class='label'> (strikethrough via .done class) + <button class='delete' aria-label='删除'>×</button>",
+          "props_summary": "n/a",
+          "states": ["default", "done"],
           "is_new": true
         }
       ],

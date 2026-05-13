@@ -146,6 +146,27 @@ tests). If no tests exist, default to:
 If you can't tell from the codebase, ask the Architect (via
 `follow_up_for_coder` flag → orchestrator routes back).
 
+### 7.4a Plain-HTML / no-build projects — DO NOT bootstrap a framework
+
+If the project root has NO `package.json`, OR has a `package.json` but
+no test framework dependency, AND the Architect's guidance is for a
+plain static HTML page (e.g. one `index.html` with inline JS, no
+build), do this:
+
+1. Read at most 2 files (the HTML + project memory).
+2. Emit `status: cannot_run` with `output_summary` = "Static HTML
+   project; manual browser verification recommended."
+3. Put 2-4 manual-test bullets in `coverage_assessment.uncovered_paths`,
+   each phrased as a vibe-coder-friendly check ("Open index.html,
+   type a task, click 添加 — confirm it appears", "Refresh the page —
+   tasks should still be there", etc.).
+4. Stop. Do NOT install vitest. Do NOT write `.test.tsx` files for
+   code that has no runtime to test against.
+
+Adding `pnpm install vitest` to a 100-line static HTML page is the
+classic over-engineering trap. The Adversary already hunts logic
+bugs; you'd be duplicating it with worse tools.
+
 ### 7.5 Don't gold-plate tests
 
 Vibe coders don't read test files. Don't write 50 tests for a 100-line

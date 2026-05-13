@@ -166,6 +166,22 @@ async function main(): Promise<void> {
         console.log('\n  communicator.user_facing_text:')
         console.log('  ' + communicator.user_facing_text.split('\n').join('\n  '))
       }
+      // Dump every role envelope so pipeline-quality iteration can
+      // analyze WHERE each layer went weak (the headline summary
+      // hides everything except Communicator's spin).
+      if (process.env.POLYCODER_SMOKE_DUMP_ENVELOPES === '1') {
+        for (const [role, env] of Object.entries(result.role_outputs)) {
+          console.log(`\n── ${role} ─────────────────────────────`)
+          console.log(`  status:  ${env?.status}`)
+          console.log(`  summary: ${env?.summary}`)
+          console.log('  payload:')
+          const payloadJson = JSON.stringify(env?.payload, null, 2)
+            .split('\n')
+            .map((l) => '    ' + l)
+            .join('\n')
+          console.log(payloadJson)
+        }
+      }
     } else if (result.status === 'failed') {
       console.error('\nsmoke: FAILED')
       console.error(`  stopped_at_role = ${result.stopped_at_role}`)
@@ -175,6 +191,21 @@ async function main(): Promise<void> {
       console.error(
         `  partial_outputs = ${Object.keys(result.partial_outputs).join(', ')}`,
       )
+      // Dump every partial role envelope so the pipeline-quality
+      // analyst (a human or another agent) can see WHERE it went
+      // wrong without spelunking the SQLite DB. Stable iter
+      // optimization workflow depends on this.
+      for (const [role, env] of Object.entries(result.partial_outputs)) {
+        console.error(`\n── ${role} ─────────────────────────────`)
+        console.error(`  status:  ${env?.status}`)
+        console.error(`  summary: ${env?.summary}`)
+        console.error('  payload:')
+        const payloadJson = JSON.stringify(env?.payload, null, 2)
+          .split('\n')
+          .map((l) => '    ' + l)
+          .join('\n')
+        console.error(payloadJson)
+      }
       exitCode = 1
     } else {
       console.warn('\nsmoke: ABORTED')
@@ -187,11 +218,12 @@ async function main(): Promise<void> {
     exitCode = 1
   } finally {
     db.close()
-    rmSync(dbDir, { recursive: true, force: true })
     if (process.env.POLYCODER_SMOKE_KEEP_WS !== '1') {
       rmSync(wsRoot, { recursive: true, force: true })
+      rmSync(dbDir, { recursive: true, force: true })
     } else {
-      console.log(`smoke: kept workspace at ${wsRoot} (POLYCODER_SMOKE_KEEP_WS=1)`)
+      console.log(`smoke: kept workspace at ${wsRoot}`)
+      console.log(`smoke: kept DB at ${join(dbDir, 'smoke.db')}`)
     }
   }
 
