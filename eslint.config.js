@@ -18,6 +18,8 @@ export default tseslint.config(
       'benchmarks/ist/metrics/polycoder-full/**',
       'benchmarks/ist/metrics/polycoder-coder-only/**',
       'benchmarks/ist/metrics/lovable/**',
+      // CommonJS dev scripts (Node) — lint config is ESM-targeted.
+      'scripts/**/*.cjs',
     ],
   },
   js.configs.recommended,

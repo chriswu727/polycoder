@@ -364,8 +364,14 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
       >
         <Sidebar
           activeIter={activeIter}
-          onSelectIter={(id) => setActiveIter(id)}
-          onNewPrompt={() => reset()}
+          onSelectIter={(id) => {
+            setActiveIter(id)
+            void useIterationStore.getState().loadPast(id)
+          }}
+          onNewPrompt={() => {
+            setActiveIter(null)
+            reset()
+          }}
           onOpenSettings={onOpenSettings}
           onCreateWorkspace={onCreateWorkspace}
         />
