@@ -1,6 +1,6 @@
 {
   "name": "polycoder",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "private": true,
   "description": "Multi-model AI coding agent for vibe coders. Optimized for MVP-to-production evolution.",
   "license": "UNLICENSED",
