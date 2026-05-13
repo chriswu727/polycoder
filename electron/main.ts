@@ -2,13 +2,27 @@
 // Creates the app window, wires up IPC handlers, opens the
 // app-private SQLite database, and instantiates the OS keystore.
 
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  shell,
+  type MenuItemConstructorOptions,
+} from 'electron'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { openDatabase } from '../data/connection.js'
+import { getWorkspace } from '../data/workspace.js'
 import { OsKeystore } from './secrets/keystore.js'
 import { IPC_CHANNELS } from './ipc/channels.js'
+import {
+  getPreviewUrl,
+  setPreviewRoot,
+  stopPreviewServer,
+} from './preview/server.js'
 import {
   handleAddSecret,
   handleListSecrets,
@@ -108,6 +122,15 @@ function setupIpcHandlers(database: Database.Database): void {
       })
       if (result.canceled || result.filePaths.length === 0) return null
       return result.filePaths[0]
+    },
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.WORKSPACE_PREVIEW_URL,
+    async (_e, req: { workspace_id: string }) => {
+      const ws = getWorkspace(database, req.workspace_id)
+      if (!ws) return null
+      setPreviewRoot(ws.workspace_root)
+      return await getPreviewUrl()
     },
   )
 
@@ -262,10 +285,131 @@ function createMainWindow(): BrowserWindow {
   return win
 }
 
+// ─── App menu ────────────────────────────────────────────────────────
+
+function installAppMenu(): void {
+  const isMac = process.platform === 'darwin'
+  const REPO_URL = 'https://github.com/chriswu727/polycoder'
+
+  const template: MenuItemConstructorOptions[] = []
+
+  if (isMac) {
+    template.push({
+      label: 'polycoder',
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    })
+  }
+
+  template.push({
+    label: 'File',
+    submenu: [
+      {
+        label: 'New Workspace…',
+        accelerator: 'CmdOrCtrl+N',
+        click: (): void => {
+          mainWindow?.webContents.send('polycoder.menu.newWorkspace')
+        },
+      },
+      {
+        label: 'New Prompt',
+        accelerator: 'CmdOrCtrl+Shift+N',
+        click: (): void => {
+          mainWindow?.webContents.send('polycoder.menu.newPrompt')
+        },
+      },
+      { type: 'separator' },
+      isMac ? { role: 'close' } : { role: 'quit' },
+    ],
+  })
+
+  template.push({
+    label: 'Edit',
+    submenu: [
+      { role: 'undo' },
+      { role: 'redo' },
+      { type: 'separator' },
+      { role: 'cut' },
+      { role: 'copy' },
+      { role: 'paste' },
+      { role: 'selectAll' },
+    ],
+  })
+
+  template.push({
+    label: 'View',
+    submenu: [
+      {
+        label: 'Toggle Theme',
+        accelerator: 'CmdOrCtrl+Shift+T',
+        click: (): void => {
+          mainWindow?.webContents.send('polycoder.menu.toggleTheme')
+        },
+      },
+      { type: 'separator' },
+      { role: 'reload' },
+      { role: 'forceReload' },
+      { role: 'toggleDevTools' },
+      { type: 'separator' },
+      { role: 'resetZoom' },
+      { role: 'zoomIn' },
+      { role: 'zoomOut' },
+      { type: 'separator' },
+      { role: 'togglefullscreen' },
+    ],
+  })
+
+  template.push({
+    label: 'Window',
+    submenu: [
+      { role: 'minimize' },
+      { role: 'zoom' },
+      ...(isMac
+        ? ([
+            { type: 'separator' },
+            { role: 'front' },
+            { type: 'separator' },
+            { role: 'window' },
+          ] as MenuItemConstructorOptions[])
+        : [{ role: 'close' } as MenuItemConstructorOptions]),
+    ],
+  })
+
+  template.push({
+    role: 'help',
+    submenu: [
+      {
+        label: 'View source on GitHub',
+        click: (): void => {
+          void shell.openExternal(REPO_URL)
+        },
+      },
+      {
+        label: 'Report an issue',
+        click: (): void => {
+          void shell.openExternal(`${REPO_URL}/issues/new`)
+        },
+      },
+    ],
+  })
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
 void app.whenReady().then(() => {
   db = openDatabase(getDatabasePath())
   setupIpcHandlers(db)
 
+  installAppMenu()
   mainWindow = createMainWindow()
 
   app.on('activate', () => {
@@ -286,4 +430,5 @@ app.on('before-quit', () => {
     db.close()
     db = null
   }
+  void stopPreviewServer()
 })

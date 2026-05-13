@@ -10,6 +10,9 @@ export const IPC_CHANNELS = {
   WORKSPACE_DELETE: 'polycoder.workspace.delete',
   /** Open a native folder-picker dialog and return the chosen path. */
   WORKSPACE_PICK_FOLDER: 'polycoder.workspace.pickFolder',
+  /** Boot (if needed) + point the preview HTTP server at this
+   *  workspace, then return the URL the renderer should iframe. */
+  WORKSPACE_PREVIEW_URL: 'polycoder.workspace.previewUrl',
 
   // Roles
   ROLE_SET_ASSIGNMENT: 'polycoder.role.setAssignment',

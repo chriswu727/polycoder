@@ -338,6 +338,7 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
     // claiming half the screen is wasteful.
     const hasIterationActivity = status !== 'idle' || !!result
 
+    const iterationId = useIterationStore.getState().iteration_id
     const previewState: PreviewState =
       status === 'running'
         ? { kind: 'building' }
@@ -347,6 +348,7 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
             ? {
                 kind: 'ready',
                 iterLabel: `iter ${String(iterationNumber ?? 0).padStart(2, '0')} · index.html`,
+                ...(iterationId ? { reloadKey: iterationId } : {}),
               }
             : { kind: 'empty-idle' }
 

@@ -147,6 +147,30 @@ export function App(): React.ReactElement {
     document.title = current ? `polycoder · ${current.name}` : 'polycoder'
   }, [current])
 
+  // Wire native menu commands → renderer state mutations.
+  const toggleTheme = usePreferencesStore((s) => s.toggleTheme)
+  useEffect(() => {
+    const polycoder = (
+      window as unknown as {
+        polycoder?: {
+          menu?: {
+            onCommand?: (
+              cb: (cmd: 'newWorkspace' | 'newPrompt' | 'toggleTheme') => void,
+            ) => () => void
+          }
+        }
+      }
+    ).polycoder
+    const sub = polycoder?.menu?.onCommand
+    if (!sub) return
+    const off = sub((cmd) => {
+      if (cmd === 'newWorkspace') setForceFirstRun(true)
+      else if (cmd === 'newPrompt') setTab('workspace')
+      else if (cmd === 'toggleTheme') toggleTheme()
+    })
+    return off
+  }, [toggleTheme])
+
   const showFirstRun = forceFirstRun || workspaces.length === 0
 
   return (

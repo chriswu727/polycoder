@@ -1,15 +1,16 @@
 // Right-pane top half: live preview of the workspace's index.html.
 //
-// V0.2 status: placeholder UI only. The real preview (a tiny
-// in-process http-server serving workspace_root + an <iframe>) is
-// the V0.1.2 follow-up — needs a new IPC channel and a server
-// lifecycle tied to workspace switching.
-//
-// In the meantime we render an "EmptyPreview" with state-aware
-// copy so the right-side layout doesn't collapse.
+// Fetches the preview URL from the main process (which boots a
+// tiny single-tenant HTTP server keyed on the active workspace's
+// workspace_root), then renders an iframe pointing at that URL.
+// Reload on iteration change is driven by the `reloadKey` prop
+// (typically the iteration_id) which forces the iframe to remount.
 
+import { useEffect, useState } from 'react'
 import type { FC } from 'react'
-import { IconRefresh, IconExternal } from '@/components/icons.js'
+
+import { IconExternal, IconRefresh } from '@/components/icons.js'
+import { useWorkspaceStore } from '@/stores/workspace.js'
 
 const HEADER_BG: React.CSSProperties = {
   display: 'flex',
@@ -21,8 +22,6 @@ const HEADER_BG: React.CSSProperties = {
 }
 
 export const EmptyPreview: FC<{ message: string; sub: string }> = ({ message, sub }) => (
-  // .empty-preview class lives in design-tokens.css — soft warm wash
-  // with a radial accent halo, no construction-zone diagonal stripes.
   <div className="empty-preview">
     <div
       style={{
@@ -63,10 +62,62 @@ export type PreviewState =
   | { kind: 'empty-no-key' }
   | { kind: 'empty-idle' }
   | { kind: 'building' }
-  | { kind: 'ready'; iterLabel: string }
+  | { kind: 'ready'; iterLabel: string; reloadKey?: string }
   | { kind: 'failed-show-prior' }
 
+const LiveIframe: FC<{ url: string; reloadKey?: string | undefined }> = ({ url, reloadKey }) => (
+  <iframe
+    key={reloadKey ?? url}
+    src={url}
+    title="Live preview"
+    style={{
+      width: '100%',
+      height: '100%',
+      border: 'none',
+      background: 'white',
+    }}
+    sandbox="allow-scripts allow-forms allow-same-origin"
+  />
+)
+
 export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
+  const current = useWorkspaceStore((s) => s.current)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [reloadTick, setReloadTick] = useState(0)
+
+  // Resolve the preview URL whenever the active workspace changes.
+  // The main process boots the server lazily and points it at the
+  // workspace_root; this gives us back a localhost URL we can iframe.
+  useEffect(() => {
+    if (!current) {
+      setPreviewUrl(null)
+      return
+    }
+    let cancelled = false
+    const api = (window as unknown as {
+      polycoder?: {
+        workspace?: {
+          previewUrl?: (req: { workspace_id: string }) => Promise<string | null>
+        }
+      }
+    }).polycoder?.workspace?.previewUrl
+    if (!api) {
+      setPreviewUrl(null)
+      return
+    }
+    void api({ workspace_id: current.id })
+      .then((url) => {
+        if (cancelled) return
+        setPreviewUrl(url)
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewUrl(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [current])
+
   let content: React.ReactNode
   let header: React.ReactNode = null
 
@@ -78,12 +129,50 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
       />
     )
   } else if (state.kind === 'empty-idle') {
-    content = (
-      <EmptyPreview
-        message="Your app will appear here"
-        sub="Send a prompt and your team will start building."
-      />
-    )
+    // Idle but workspace exists — preview iframe could still show
+    // a previous index.html if one exists. We show that if the
+    // server returned a URL; else the empty placeholder.
+    if (previewUrl) {
+      content = <LiveIframe url={previewUrl} reloadKey={`idle-${reloadTick}`} />
+      header = (
+        <div style={HEADER_BG}>
+          <span className="pc-mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>
+            {current?.name} · index.html
+          </span>
+          <span className="status-pill" data-tone="muted" style={{ fontSize: 10 }}>
+            live
+          </span>
+          <span style={{ flex: 1 }} />
+          <button
+            className="pc-btn"
+            data-variant="ghost"
+            data-size="sm"
+            onClick={() => setReloadTick((t) => t + 1)}
+            title="Reload preview"
+          >
+            <IconRefresh size={11} />
+          </button>
+          <button
+            className="pc-btn"
+            data-variant="ghost"
+            data-size="sm"
+            onClick={() => {
+              if (previewUrl) void window.open(previewUrl, '_blank')
+            }}
+            title="Open in browser"
+          >
+            <IconExternal size={11} />
+          </button>
+        </div>
+      )
+    } else {
+      content = (
+        <EmptyPreview
+          message="Your app will appear here"
+          sub="Send a prompt and your team will start building."
+        />
+      )
+    }
   } else if (state.kind === 'building') {
     content = (
       <EmptyPreview
@@ -92,33 +181,55 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
       />
     )
   } else if (state.kind === 'failed-show-prior') {
-    content = (
-      <EmptyPreview
-        message="Last working version"
-        sub="The previous iteration is preserved exactly as you left it."
-      />
-    )
+    if (previewUrl) {
+      content = (
+        <LiveIframe
+          url={previewUrl}
+          reloadKey={`failed-${reloadTick}`}
+        />
+      )
+    } else {
+      content = (
+        <EmptyPreview
+          message="Last working version"
+          sub="The previous iteration is preserved exactly as you left it."
+        />
+      )
+    }
     header = (
       <div style={HEADER_BG}>
         <span className="status-pill" data-tone="muted">
           last working
         </span>
         <span style={{ flex: 1 }} />
-        <button className="pc-btn" data-variant="ghost" data-size="sm" disabled title="Open in browser (V0.1.2)">
-          <IconExternal size={11} />
+        <button
+          className="pc-btn"
+          data-variant="ghost"
+          data-size="sm"
+          onClick={() => setReloadTick((t) => t + 1)}
+          title="Reload preview"
+        >
+          <IconRefresh size={11} />
         </button>
       </div>
     )
   } else {
-    // ready — V0.2 stub. The real iframe needs a workspace HTTP
-    // server (see V0.1.2 plan). Showing the empty pattern with the
-    // "live preview" header so the layout reads right.
-    content = (
-      <EmptyPreview
-        message="Live preview · V0.1.2"
-        sub="Your workspace's index.html will render here once the in-process server is wired up."
-      />
-    )
+    // ready (iteration completed)
+    if (previewUrl) {
+      content = (
+        <LiveIframe
+          url={previewUrl}
+          reloadKey={state.reloadKey ?? `tick-${reloadTick}`}
+        />
+      )
+    } else {
+      content = (
+        <EmptyPreview
+          message="No preview server yet"
+          sub="Restart polycoder to start the preview server."
+        />
+      )
+    }
     header = (
       <div style={HEADER_BG}>
         <span className="pc-mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>
@@ -128,10 +239,24 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
           live preview
         </span>
         <span style={{ flex: 1 }} />
-        <button className="pc-btn" data-variant="ghost" data-size="sm" disabled title="Reload preview (V0.1.2)">
+        <button
+          className="pc-btn"
+          data-variant="ghost"
+          data-size="sm"
+          onClick={() => setReloadTick((t) => t + 1)}
+          title="Reload preview"
+        >
           <IconRefresh size={11} />
         </button>
-        <button className="pc-btn" data-variant="ghost" data-size="sm" disabled title="Open in browser (V0.1.2)">
+        <button
+          className="pc-btn"
+          data-variant="ghost"
+          data-size="sm"
+          onClick={() => {
+            if (previewUrl) void window.open(previewUrl, '_blank')
+          }}
+          title="Open in browser"
+        >
           <IconExternal size={11} />
         </button>
       </div>

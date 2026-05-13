@@ -58,6 +58,9 @@ const polycoderAPI = {
     pickFolder(req?: { defaultPath?: string }): Promise<string | null> {
       return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_PICK_FOLDER, req) as Promise<string | null>
     },
+    previewUrl(req: { workspace_id: string }): Promise<string | null> {
+      return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_PREVIEW_URL, req) as Promise<string | null>
+    },
   },
 
   roles: {
@@ -108,6 +111,27 @@ const polycoderAPI = {
     },
     test(req: TestSecretRequest): Promise<TestSecretResponse> {
       return ipcRenderer.invoke(IPC_CHANNELS.SECRET_TEST, req) as Promise<TestSecretResponse>
+    },
+  },
+
+  // Native menu → renderer bridge. The main process sends commands
+  // like 'newPrompt' / 'toggleTheme' over these channels in
+  // response to the application menu.
+  menu: {
+    onCommand(callback: (cmd: 'newWorkspace' | 'newPrompt' | 'toggleTheme') => void): () => void {
+      const make = (cmd: 'newWorkspace' | 'newPrompt' | 'toggleTheme') => (): void =>
+        callback(cmd)
+      const onNewWorkspace = make('newWorkspace')
+      const onNewPrompt = make('newPrompt')
+      const onToggleTheme = make('toggleTheme')
+      ipcRenderer.on('polycoder.menu.newWorkspace', onNewWorkspace)
+      ipcRenderer.on('polycoder.menu.newPrompt', onNewPrompt)
+      ipcRenderer.on('polycoder.menu.toggleTheme', onToggleTheme)
+      return () => {
+        ipcRenderer.removeListener('polycoder.menu.newWorkspace', onNewWorkspace)
+        ipcRenderer.removeListener('polycoder.menu.newPrompt', onNewPrompt)
+        ipcRenderer.removeListener('polycoder.menu.toggleTheme', onToggleTheme)
+      }
     },
   },
 } as const
