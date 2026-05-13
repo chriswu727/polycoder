@@ -272,3 +272,54 @@ Open follow-ups for future rounds:
   china_pro / mixed preset.
 
 ---
+
+## Round 3 — 2026-05-13 (generalization run)
+
+**Prompt**: `做一个英语单词卡片，输入单词和意思能保存，然后可以一个一个翻看，记得已经学过的`
+
+Different domain (flashcards), 5 features including navigation state
+(prev/next current card) + per-item flag (`已掌握`). Tests whether
+the Round 1/2 fixes generalize beyond todo + expense.
+
+### Result (smoke 9)
+
+- Iteration: `completed`, traffic_light `yellow`, 224 s, $0.0706.
+- 1 file (`index.html`). All 8 roles ran (no failures).
+  - translator       $0.0015 / 6 s
+  - designer         $0       / 49 s   (glm-4-flash)
+  - architect        $0.0126 / 37 s
+  - coder            $0.0193 / 60 s
+  - test_runner      $0.0106 / 18 s    ← still under bumped budget 25
+  - long_term_critic $0.0105 / 21 s    ← under bumped budget 18
+  - adversary        $0.0161 / 38 s    (deepseek-chat, no 429)
+  - communicator     $0       / 35 s
+- traffic_light = yellow due to Adversary's real issues (not fabricated).
+
+**Functional verification** — drove via chrome-devtools:
+
+1. ✅ Add card "apple / 苹果" → list shows 1 card, progress 0/1.
+2. ✅ Add card "elephant / 大象" → list shows 2/2, auto-navigates to
+   newest card.
+3. ✅ prev/next buttons disable/enable correctly at list edges.
+4. ✅ Click "标记已掌握" on elephant → button flips to "取消已掌握",
+   "✓ 已掌握" badge appears on card, progress updates 0/2 → 1/2.
+5. ✅ Click "← 上一个" → navigates to apple card.
+6. ✅ Reload page → 1/2 progress + 2-card list + apple/elephant
+   data all persist via localStorage. apple shown as card 1.
+
+For a 5-feature prompt in a fresh domain (no overlap with §10 prompt
+examples), the budget preset pipeline produced a working single-file
+app on the first try. The Round 1 §7.7 scope-sizing and Round 2
+anti-fabrication fixes hold across domains.
+
+### Round 3 conclusion + Layer HH
+
+- Pipeline-quality structural fixes are stable. Tracked items
+  (`tests_runner` and `long_term_critic` budgets) held within the
+  bumped ceilings on a moderately-larger app.
+- Layer HH shipped alongside: the `<pre>`-based code viewer from
+  Layer GG is now a real CodeMirror 6 read-only editor with
+  per-language syntax highlighting (typescript/javascript/html/css/
+  json/markdown). Same file tree + tab UI, just lit up properly.
+
+---

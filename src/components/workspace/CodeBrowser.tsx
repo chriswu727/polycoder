@@ -6,8 +6,16 @@
 // follow-up; what matters first is that "you can click any file
 // the pipeline produced and read it" works.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FC } from 'react'
+import { EditorState } from '@codemirror/state'
+import { EditorView, lineNumbers, highlightActiveLineGutter } from '@codemirror/view'
+import { html } from '@codemirror/lang-html'
+import { javascript } from '@codemirror/lang-javascript'
+import { css as cmCss } from '@codemirror/lang-css'
+import { json as cmJson } from '@codemirror/lang-json'
+import { markdown as cmMd } from '@codemirror/lang-markdown'
+import { oneDark } from '@codemirror/theme-one-dark'
 
 import { useWorkspaceStore } from '@/stores/workspace.js'
 import { IconFile, IconRefresh } from '@/components/icons.js'
@@ -301,7 +309,7 @@ export const CodeBrowser: FC = () => {
               loading…
             </div>
           ) : content.ok ? (
-            <CodePre content={content.content} />
+            <CodeMirrorView content={content.content} language={content.language} />
           ) : (
             <div
               style={{
@@ -320,53 +328,66 @@ export const CodeBrowser: FC = () => {
 }
 
 /**
- * Line-numbered monospace block. No syntax highlighting yet — we
- * deliberately ship the structurally-useful primitive first. A
- * CodeMirror layer is a later iteration.
+ * Read-only CodeMirror 6 viewer. Language extension picked from the
+ * server-side detected language hint. One-dark theme so the viewer
+ * sits naturally over polycoder's V3 cosmic surface.
  */
-const CodePre: FC<{ content: string }> = ({ content }) => {
-  const lines = content.split('\n')
+function languageExtension(lang: string) {
+  switch (lang) {
+    case 'typescript':
+      return javascript({ jsx: true, typescript: true })
+    case 'javascript':
+      return javascript({ jsx: true })
+    case 'html':
+      return html({ matchClosingTags: true, autoCloseTags: false })
+    case 'css':
+      return cmCss()
+    case 'json':
+      return cmJson()
+    case 'markdown':
+      return cmMd()
+    default:
+      return []
+  }
+}
+
+const CodeMirrorView: FC<{ content: string; language: string }> = ({
+  content,
+  language,
+}) => {
+  const hostRef = useRef<HTMLDivElement | null>(null)
+  const viewRef = useRef<EditorView | null>(null)
+
+  useEffect(() => {
+    if (!hostRef.current) return
+    const state = EditorState.create({
+      doc: content,
+      extensions: [
+        lineNumbers(),
+        highlightActiveLineGutter(),
+        EditorView.editable.of(false),
+        EditorState.readOnly.of(true),
+        EditorView.lineWrapping,
+        oneDark,
+        languageExtension(language),
+      ],
+    })
+    const view = new EditorView({ state, parent: hostRef.current })
+    viewRef.current = view
+    return () => {
+      view.destroy()
+      viewRef.current = null
+    }
+  }, [content, language])
+
   return (
-    <pre
-      className="pc-mono"
+    <div
+      ref={hostRef}
       style={{
-        margin: 0,
-        padding: 0,
-        fontSize: 11.5,
-        lineHeight: 1.5,
+        height: '100%',
+        width: '100%',
+        fontSize: 12,
       }}
-    >
-      {lines.map((line, i) => (
-        <div
-          key={i}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '50px 1fr',
-          }}
-        >
-          <span
-            style={{
-              textAlign: 'right',
-              paddingRight: 10,
-              paddingLeft: 6,
-              color: 'var(--ink-3)',
-              userSelect: 'none',
-              borderRight: '1px solid var(--hairline)',
-            }}
-          >
-            {i + 1}
-          </span>
-          <span
-            style={{
-              padding: '0 12px',
-              whiteSpace: 'pre',
-              overflow: 'visible',
-            }}
-          >
-            {line || ' '}
-          </span>
-        </div>
-      ))}
-    </pre>
+    />
   )
 }
