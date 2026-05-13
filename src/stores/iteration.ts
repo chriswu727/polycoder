@@ -73,6 +73,16 @@ export type IterationState = {
 type IterationStore = IterationState & {
   start: (workspace_id: string, prompt: string) => Promise<void>
   startQuickEdit: (workspace_id: string, instruction: string) => Promise<void>
+  /**
+   * Follow up on a completed Quick Edit — runs a new iteration that
+   * inherits the prior message history so the model has full
+   * context (read files, prior edits, prior reasoning).
+   */
+  continueQuickEdit: (
+    workspace_id: string,
+    previous_iteration_id: string,
+    instruction: string,
+  ) => Promise<void>
   abort: (workspace_id: string) => Promise<void>
   reset: () => void
   /** Load a past iteration from the DB into the store. Renders in
@@ -160,6 +170,25 @@ export const useIterationStore = create<IterationStore>((set, get) => ({
     const ack = await window.polycoder.iteration.quickEdit({
       workspace_id,
       instruction,
+    })
+    if (!ack.ok) {
+      set({ status: 'failed', error: ack.error })
+      return
+    }
+    set({ iteration_id: ack.iteration_id, iteration_number: ack.iteration_number })
+  },
+
+  async continueQuickEdit(workspace_id, previous_iteration_id, instruction) {
+    set({
+      ...initial(),
+      status: 'running',
+      mode: 'quick',
+      user_prompt: instruction,
+    })
+    const ack = await window.polycoder.iteration.quickEdit({
+      workspace_id,
+      instruction,
+      previous_iteration_id,
     })
     if (!ack.ok) {
       set({ status: 'failed', error: ack.error })

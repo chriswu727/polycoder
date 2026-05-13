@@ -605,8 +605,9 @@ const FailureView: FC<{ code: FailureCode; stoppedAtRole: RoleType | undefined; 
     )
   }
 
-const QuickEditResult: FC = () => {
+const QuickEditResult: FC<{ onContinue?: (() => void) | undefined }> = ({ onContinue }) => {
   const result = useIterationStore((s) => s.result)
+  const iterationId = useIterationStore((s) => s.iteration_id)
   const error = useIterationStore((s) => s.error)
   const costFormat = usePreferencesStore.getState().costFormat
 
@@ -711,11 +712,27 @@ const QuickEditResult: FC = () => {
       </div>
 
       <FilesChangedSection files={result.files_changed} changes={changes} />
+
+      {onContinue && iterationId ? (
+        <button
+          className="pc-btn"
+          data-variant="ghost"
+          onClick={onContinue}
+          style={{
+            alignSelf: 'flex-start',
+            gap: 6,
+          }}
+        >
+          <IconArrowRight size={12} /> Continue this thread
+        </button>
+      ) : null}
     </div>
   )
 }
 
-export const IterationResult: FC = () => {
+export const IterationResult: FC<{ onContinueQuickEdit?: (() => void) | undefined }> = ({
+  onContinueQuickEdit,
+}) => {
   const status = useIterationStore((s) => s.status)
   const result = useIterationStore((s) => s.result)
   const error = useIterationStore((s) => s.error)
@@ -727,7 +744,7 @@ export const IterationResult: FC = () => {
   // huddle, no Communicator prose (there isn't one), just Coder's
   // free-form summary + files changed + cost.
   if (mode === 'quick' && (status === 'completed' || status === 'failed')) {
-    return <QuickEditResult />
+    return <QuickEditResult onContinue={onContinueQuickEdit} />
   }
 
   if (status === 'failed') {

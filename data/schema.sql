@@ -95,6 +95,30 @@ CREATE TABLE IF NOT EXISTS iterations (
 CREATE INDEX IF NOT EXISTS idx_iterations_workspace_started
   ON iterations(workspace_id, started_at DESC);
 
+-- ─── Iteration messages ─────────────────────────────────────────────
+-- One row per LLM message produced during an iteration. Captured for
+-- Quick Edit follow-up / conversation continuation — a follow-up
+-- reuses this history as the initial conversation so the model has
+-- full context (prior reads, prior edits, prior reasoning) without
+-- having to re-discover.
+--
+-- For full pipeline iterations we don't currently persist messages;
+-- iteration_messages is empty for those rows. The continuation
+-- feature is scoped to Quick Edit for now.
+
+CREATE TABLE IF NOT EXISTS iteration_messages (
+  iteration_id     TEXT NOT NULL REFERENCES iterations(id) ON DELETE CASCADE,
+  seq              INTEGER NOT NULL,
+  role             TEXT NOT NULL,
+  content          TEXT NOT NULL,
+  tool_calls_json  TEXT,
+  tool_call_id     TEXT,
+  PRIMARY KEY (iteration_id, seq)
+);
+
+CREATE INDEX IF NOT EXISTS idx_iteration_messages
+  ON iteration_messages(iteration_id, seq);
+
 -- ─── Cost records ───────────────────────────────────────────────────
 -- One row per role invocation. Aggregated for per-iteration and
 -- per-workspace totals; raw rows kept for audit.

@@ -38,6 +38,10 @@ import { ProviderError } from '@providers/errors.js'
 import { ALL_TOOLS } from '@tools/registry.js'
 import { startIteration, finishIteration } from '../../data/iterations.js'
 import { appendCostRecord } from '../../data/costRecords.js'
+import {
+  appendIterationMessages,
+  loadIterationMessages,
+} from '../../data/iterationMessages.js'
 import { PipelineEventBus } from './events.js'
 import { parseAtMentions, formatMentionsContextBlock } from './atFileMentions.js'
 import { loadProjectRules, formatRulesAddendum } from './projectRules.js'
@@ -69,6 +73,13 @@ export type QuickEditArgs = {
   eventBus?: PipelineEventBus
   /** Optional override (mostly for tests). */
   maxToolCalls?: number
+  /**
+   * If set, this Quick Edit continues the conversation started in
+   * the prior iteration. The system prompt + initialUserMessage path
+   * is replaced by the persisted message history + the new
+   * instruction appended as the next user turn.
+   */
+  previous_iteration_id?: string
 }
 
 export type QuickEditCompleted = {
@@ -185,6 +196,25 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
     readSet.add(`${args.workspace.workspace_root}/${r.path}`.replace(/\/+/g, '/'))
   }
 
+  // Continuation: also seed readSet with files read in prior turns
+  // so edit_file's read-before-edit check passes. Walks the
+  // previous iteration's assistant tool_calls for read_file calls.
+  if (args.previous_iteration_id) {
+    const prior = loadIterationMessages(args.db, args.previous_iteration_id)
+    for (const m of prior) {
+      if (m.role !== 'assistant' || !m.tool_calls) continue
+      for (const tc of m.tool_calls) {
+        if (tc.name !== 'read_file') continue
+        const tcArgs = tc.arguments as { path?: unknown }
+        if (typeof tcArgs.path !== 'string') continue
+        const abs = isAbsolute(tcArgs.path)
+          ? tcArgs.path
+          : resolve(args.workspace.workspace_root, tcArgs.path)
+        readSet.add(abs)
+      }
+    }
+  }
+
   const ctx: ToolContext = {
     workspace_id: args.workspace.id,
     workspace_root: args.workspace.workspace_root,
@@ -220,6 +250,17 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
     const systemPrompt =
       QUICK_EDIT_SYSTEM_PROMPT + formatRulesAddendum(projectRules)
 
+    // Continuation: load prior conversation, append the new user
+    // message. The first message is always the system prompt — keep
+    // the prior one so cached context lines up.
+    let initialMessages
+    if (args.previous_iteration_id) {
+      const prior = loadIterationMessages(args.db, args.previous_iteration_id)
+      if (prior.length > 0) {
+        initialMessages = [...prior, { role: 'user' as const, content: userMessage }]
+      }
+    }
+
     const run = await runWithTools({
       provider: args.provider,
       model: args.model,
@@ -229,6 +270,7 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
       ctx,
       maxToolCalls: args.maxToolCalls ?? QUICK_EDIT_MAX_TOOL_CALLS,
       onBeforeToolCall,
+      ...(initialMessages ? { initialMessages } : {}),
       onToolCall: (obs) => {
         events.emit({
           type: 'tool_call_progress',
@@ -246,6 +288,10 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
     summary = run.finalText.trim() || '(no summary)'
     toolCallsMade = run.toolCallsMade
     totalCostUsd = run.totalUsage.estimated_cost_usd
+
+    // Persist conversation history so follow-up iterations can pick
+    // up exactly where this one left off.
+    appendIterationMessages(args.db, iteration.id, run.messages)
 
     appendCostRecord(args.db, {
       workspace_id: args.workspace.id,

@@ -53,6 +53,12 @@ export type RunWithToolsArgs = {
    * diff can be computed after edit_file mutates them.
    */
   onBeforeToolCall?: (toolName: string, args: unknown) => void
+  /**
+   * Optional prior conversation. When provided, the system prompt
+   * and initialUserMessage are ignored — the provided messages
+   * become the starting point. Used for Quick Edit follow-up.
+   */
+  initialMessages?: ChatMessage[]
 }
 
 export type RunWithToolsResult = {
@@ -64,6 +70,13 @@ export type RunWithToolsResult = {
     cached_input_tokens: number
     estimated_cost_usd: number
   }
+  /**
+   * Final conversation state — every message exchanged with the
+   * provider during this run, in order. Includes the initial
+   * system + user message and every tool-use turn. Callers that
+   * want to persist for follow-up continuation capture this.
+   */
+  messages: ChatMessage[]
 }
 
 const DEFAULT_MAX_TOOL_CALLS = 20
@@ -89,10 +102,12 @@ export async function runWithTools(
 
   const toolSchemas: ToolSchema[] = args.tools.map((t) => toolToSchema(t))
 
-  const messages: ChatMessage[] = [
-    { role: 'system', content: args.systemPrompt },
-    { role: 'user', content: args.initialUserMessage },
-  ]
+  const messages: ChatMessage[] = args.initialMessages
+    ? [...args.initialMessages]
+    : [
+        { role: 'system', content: args.systemPrompt },
+        { role: 'user', content: args.initialUserMessage },
+      ]
 
   let toolCallsMade = 0
   const totalUsage = {
@@ -154,11 +169,14 @@ export async function runWithTools(
       continue
     }
 
-    // No tool calls → terminal response. Return the text.
+    // No tool calls → terminal response. Append the final assistant
+    // message so callers persisting messages get the complete record.
+    messages.push({ role: 'assistant', content: response.content })
     return {
       finalText: response.content,
       toolCallsMade,
       totalUsage,
+      messages,
     }
   }
 }

@@ -231,6 +231,56 @@ describe('runQuickEdit', () => {
     expect(outputs.coder.payload.files_changed[0]?.action).toBe('create')
   })
 
+  it('continues a prior conversation when previous_iteration_id is set', async () => {
+    // First turn: model reads file, edits it.
+    const provider1 = makeProvider([
+      toolCall('read_file', { path: 'src/index.ts' }),
+      textOnly('Read it. greet returns "hi". What change do you want?'),
+    ])
+    const first = await runQuickEdit({
+      db,
+      keystore,
+      workspace,
+      instruction: 'show me what greet does',
+      provider: provider1,
+      model: 'deepseek-chat',
+    })
+    expect(first.status).toBe('completed')
+
+    // Second turn: continuation. Persisted messages from turn 1 are
+    // loaded; the new instruction is appended; model responds.
+    const provider2 = makeProvider([
+      toolCall('edit_file', {
+        path: 'src/index.ts',
+        old_string: '"hi"',
+        new_string: '"hello"',
+      }),
+      textOnly('Done — changed "hi" to "hello".'),
+    ])
+    const followUp = await runQuickEdit({
+      db,
+      keystore,
+      workspace,
+      instruction: 'change "hi" to "hello"',
+      provider: provider2,
+      model: 'deepseek-chat',
+      previous_iteration_id: first.iteration_id,
+    })
+    expect(followUp.status).toBe('completed')
+    if (followUp.status !== 'completed') return
+    expect(followUp.files_changed).toEqual(['src/index.ts'])
+
+    // The follow-up iteration's persisted messages should be longer
+    // than just two turns — it includes the prior context plus the
+    // new exchange.
+    const msgCount = db
+      .prepare(
+        'SELECT COUNT(*) as n FROM iteration_messages WHERE iteration_id = ?',
+      )
+      .get(followUp.iteration_id) as { n: number }
+    expect(msgCount.n).toBeGreaterThan(4)
+  })
+
   it('records cost via cost_records table', async () => {
     const provider = makeProvider([textOnly('did nothing')])
     const result = await runQuickEdit({

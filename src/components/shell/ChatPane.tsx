@@ -77,6 +77,10 @@ export const ChatComposer: FC<{
   presetLabel?: string
   mode: ComposerMode
   onModeChange: (mode: ComposerMode) => void
+  /** When set, the next send is a Quick Edit follow-up. The composer
+   *  shows a pinned badge so the user knows. */
+  followUpLabel?: string | undefined
+  onClearFollowUp?: (() => void) | undefined
 }> = ({
   onSend,
   disabled = false,
@@ -84,6 +88,8 @@ export const ChatComposer: FC<{
   presetLabel,
   mode,
   onModeChange,
+  followUpLabel,
+  onClearFollowUp,
 }) => {
   const [val, setVal] = useState('')
   const send = (): void => {
@@ -100,46 +106,91 @@ export const ChatComposer: FC<{
         background: 'var(--bg-2)',
       }}
     >
-      {/* Mode segmented control. Lives above the composer card so it
-       *  reads as a discrete affordance rather than a setting buried
-       *  in the input's chrome. */}
       <div
-        role="tablist"
-        aria-label="Iteration mode"
         style={{
-          display: 'inline-flex',
-          gap: 0,
-          padding: 3,
-          background: 'var(--surface-2)',
-          border: '1px solid var(--border)',
-          borderRadius: 9,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
           marginBottom: 8,
+          flexWrap: 'wrap',
         }}
       >
-        {(['quick', 'full'] as ComposerMode[]).map((m) => (
-          <button
-            key={m}
-            role="tab"
-            aria-selected={mode === m}
-            onClick={() => onModeChange(m)}
-            disabled={disabled}
+        {/* Mode segmented control. Lives above the composer card so
+         *  it reads as a discrete affordance rather than a setting
+         *  buried in the input's chrome. */}
+        <div
+          role="tablist"
+          aria-label="Iteration mode"
+          style={{
+            display: 'inline-flex',
+            gap: 0,
+            padding: 3,
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border)',
+            borderRadius: 9,
+          }}
+        >
+          {(['quick', 'full'] as ComposerMode[]).map((m) => (
+            <button
+              key={m}
+              role="tab"
+              aria-selected={mode === m}
+              onClick={() => onModeChange(m)}
+              disabled={disabled}
+              className="pc-mono"
+              style={{
+                padding: '4px 10px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 500,
+                border: 'none',
+                cursor: 'pointer',
+                background: mode === m ? 'var(--surface)' : 'transparent',
+                color: mode === m ? 'var(--ink)' : 'var(--ink-3)',
+                boxShadow: mode === m ? 'var(--shadow-1)' : 'none',
+                transition: 'background 120ms ease, color 120ms ease',
+              }}
+            >
+              {MODE_LABEL[m]}
+            </button>
+          ))}
+        </div>
+        {followUpLabel ? (
+          <div
             className="pc-mono"
             style={{
-              padding: '4px 10px',
-              borderRadius: 6,
-              fontSize: 11,
-              fontWeight: 500,
-              border: 'none',
-              cursor: 'pointer',
-              background: mode === m ? 'var(--surface)' : 'transparent',
-              color: mode === m ? 'var(--ink)' : 'var(--ink-3)',
-              boxShadow: mode === m ? 'var(--shadow-1)' : 'none',
-              transition: 'background 120ms ease, color 120ms ease',
+              fontSize: 10.5,
+              padding: '3px 8px 3px 10px',
+              borderRadius: 14,
+              background: 'var(--accent-soft)',
+              color: 'var(--accent)',
+              border: '1px solid oklch(from var(--accent) l c h / 0.30)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
             }}
           >
-            {MODE_LABEL[m]}
-          </button>
-        ))}
+            <span>↻ {followUpLabel}</span>
+            {onClearFollowUp ? (
+              <button
+                onClick={onClearFollowUp}
+                aria-label="Cancel follow-up"
+                title="Cancel follow-up (start fresh instead)"
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: 'var(--accent)',
+                  padding: 0,
+                  fontSize: 12,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div

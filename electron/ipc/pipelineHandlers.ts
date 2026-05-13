@@ -56,6 +56,12 @@ export type GetIterationResponse =
 export type QuickEditRequest = {
   workspace_id: string
   instruction: string
+  /**
+   * Optional — when present, this Quick Edit continues the
+   * conversation started in the named iteration. The prior message
+   * history is loaded + the new instruction appended.
+   */
+  previous_iteration_id?: string
 }
 
 export type QuickEditResponse =
@@ -271,6 +277,9 @@ export async function handleQuickEdit(
         model: coderAssignment.model_id ?? '',
         abort_signal: abortController.signal,
         eventBus: bus,
+        ...(req.previous_iteration_id
+          ? { previous_iteration_id: req.previous_iteration_id }
+          : {}),
       })
     } catch (e) {
       // runQuickEdit handles its own errors and emits a failed event;

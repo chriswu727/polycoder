@@ -363,6 +363,9 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
     const bootstrap = useIterationStore((s) => s.bootstrap)
     const [activeIter, setActiveIter] = useState<string | null>(null)
     const [composerMode, setComposerMode] = useState<ComposerMode>('quick')
+    /** When set, the next send through the composer is a Quick Edit
+     *  follow-up that continues the named iteration's conversation. */
+    const [followUpOf, setFollowUpOf] = useState<string | null>(null)
 
     useEffect(() => {
       const off = bootstrap(() => useWorkspaceStore.getState().current?.id ?? null)
@@ -422,15 +425,33 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
           footer={
             <ChatComposer
               mode={composerMode}
-              onModeChange={setComposerMode}
+              onModeChange={(m) => {
+                setComposerMode(m)
+                // Switching out of quick clears any pending follow-up.
+                if (m !== 'quick') setFollowUpOf(null)
+              }}
+              followUpLabel={
+                followUpOf
+                  ? `continuing iter ${String(iterationNumber ?? 0).padStart(2, '0')}`
+                  : undefined
+              }
+              onClearFollowUp={() => setFollowUpOf(null)}
               onSend={(text, mode) => {
                 if (!current) return
                 if (mode === 'quick') {
-                  void useIterationStore
-                    .getState()
-                    .startQuickEdit(current.id, text)
+                  if (followUpOf) {
+                    void useIterationStore
+                      .getState()
+                      .continueQuickEdit(current.id, followUpOf, text)
+                    setFollowUpOf(null)
+                  } else {
+                    void useIterationStore
+                      .getState()
+                      .startQuickEdit(current.id, text)
+                  }
                 } else {
                   void useIterationStore.getState().start(current.id, text)
+                  setFollowUpOf(null)
                 }
               }}
               disabled={status === 'running'}
@@ -467,7 +488,12 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
                     }}
                   />
                 ) : (
-                  <IterationResult />
+                  <IterationResult
+                    onContinueQuickEdit={() => {
+                      const iterId = useIterationStore.getState().iteration_id
+                      if (iterId) setFollowUpOf(iterId)
+                    }}
+                  />
                 )}
               </div>
               <div style={{ overflow: 'hidden' }}>
