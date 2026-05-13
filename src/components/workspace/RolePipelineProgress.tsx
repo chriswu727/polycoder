@@ -11,8 +11,9 @@ import type { FC } from 'react'
 
 import type { RoleType } from '@core/types/role.js'
 import { useIterationStore } from '@/stores/iteration.js'
+import { formatCost, usePreferencesStore } from '@/stores/preferences.js'
 import { ROLE_ICONS, IconCheck, IconX, IconSparkle, IconStop } from '@/components/icons.js'
-import { ROLE_LABEL, hueFor, roleSwatches } from '@/components/role-palette.js'
+import { ROLE_DESCRIPTION, ROLE_LABEL, hueFor, roleSwatches } from '@/components/role-palette.js'
 
 const ROLE_ORDER: RoleType[] = [
   'translator',
@@ -66,7 +67,15 @@ const TimelineRow: FC<{
   }
 
   return (
-    <div style={{ display: 'flex', gap: 12, position: 'relative', paddingBottom: isLast ? 0 : 14 }}>
+    <div
+      title={`${ROLE_LABEL[role]} — ${ROLE_DESCRIPTION[role]}`}
+      style={{
+        display: 'flex',
+        gap: 12,
+        position: 'relative',
+        paddingBottom: isLast ? 0 : 14,
+      }}
+    >
       {!isLast ? (
         <div
           style={{
@@ -184,6 +193,7 @@ export const RolePipelineProgress: FC<{ onAbort?: () => void }> = ({ onAbort }) 
   const status = useIterationStore((s) => s.status)
   const roleProgress = useIterationStore((s) => s.roleProgress)
   const cost = useIterationStore((s) => s.cumulativeCostUsd)
+  const costFormat = usePreferencesStore((s) => s.costFormat)
 
   if (status === 'idle') return null
 
@@ -223,8 +233,8 @@ export const RolePipelineProgress: FC<{ onAbort?: () => void }> = ({ onAbort }) 
             className="pc-mono"
             style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}
           >
-            step {Math.min(completedCount + 1, ROLE_ORDER.length)} of {ROLE_ORDER.length} · $
-            {cost.toFixed(2)} so far
+            step {Math.min(completedCount + 1, ROLE_ORDER.length)} of{' '}
+            {ROLE_ORDER.length} · {formatCost(cost, costFormat)} so far
           </div>
         </div>
         {onAbort && status === 'running' ? (

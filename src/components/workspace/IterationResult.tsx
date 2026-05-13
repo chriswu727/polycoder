@@ -13,6 +13,7 @@ import { useState } from 'react'
 import type { FC } from 'react'
 
 import { useIterationStore } from '@/stores/iteration.js'
+import { formatCost, usePreferencesStore } from '@/stores/preferences.js'
 import type { CommunicatorPayload } from '@core/types/payloads/communicator.js'
 
 import { DisagreementCard, type DisagreementCardData } from './DisagreementCard.js'
@@ -499,7 +500,11 @@ export const IterationResult: FC = () => {
   if (!communicator) return null
 
   const verdict: Verdict = result.traffic_light
-  const meta = `${(result.duration_ms / 1000).toFixed(0)}s · $${result.total_cost_usd.toFixed(2)}`
+  const costFormat = usePreferencesStore.getState().costFormat
+  const meta = `${(result.duration_ms / 1000).toFixed(0)}s · ${formatCost(
+    result.total_cost_usd,
+    costFormat,
+  )}`
 
   // Cast disagreement_cards: schema validates them but TS sees them
   // as the schema's inferred shape (which matches DisagreementCardData).

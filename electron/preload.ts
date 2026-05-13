@@ -22,6 +22,8 @@ import type {
   GetWorkspaceResponse,
   DeleteWorkspaceRequest,
   DeleteWorkspaceResponse,
+  RenameWorkspaceRequest,
+  RenameWorkspaceResponse,
   SetRoleAssignmentRequest,
   SetRoleAssignmentResponse,
   ApplyPresetRequest,
@@ -54,6 +56,9 @@ const polycoderAPI = {
     },
     delete(req: DeleteWorkspaceRequest): Promise<DeleteWorkspaceResponse> {
       return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_DELETE, req) as Promise<DeleteWorkspaceResponse>
+    },
+    rename(req: RenameWorkspaceRequest): Promise<RenameWorkspaceResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_RENAME, req) as Promise<RenameWorkspaceResponse>
     },
     pickFolder(req?: { defaultPath?: string }): Promise<string | null> {
       return ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_PICK_FOLDER, req) as Promise<string | null>

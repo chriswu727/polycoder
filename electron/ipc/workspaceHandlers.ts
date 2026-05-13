@@ -9,6 +9,7 @@ import {
   deleteWorkspace as deleteWorkspaceData,
   setRoleAssignment as setRoleAssignmentData,
   getHydratedWorkspace,
+  updateWorkspace as updateWorkspaceData,
 } from '../../data/workspace.js'
 import type {
   Workspace,
@@ -76,6 +77,23 @@ export function handleDeleteWorkspace(
 ): DeleteWorkspaceResponse {
   deleteWorkspaceData(db, req.id)
   return { ok: true }
+}
+
+export type RenameWorkspaceRequest = { id: string; name: string }
+export type RenameWorkspaceResponse =
+  | { ok: true; workspace: Workspace }
+  | { ok: false; error: string }
+
+export function handleRenameWorkspace(
+  db: Database.Database,
+  req: RenameWorkspaceRequest,
+): RenameWorkspaceResponse {
+  try {
+    const next = updateWorkspaceData(db, req.id, { name: req.name })
+    return { ok: true, workspace: next }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
 }
 
 // ─── Role assignments ──────────────────────────────────────────────

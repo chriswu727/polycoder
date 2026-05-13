@@ -38,11 +38,13 @@ import {
   handleListWorkspaces,
   handleGetWorkspace,
   handleDeleteWorkspace,
+  handleRenameWorkspace,
   handleSetRoleAssignment,
   handleApplyPreset,
   type CreateWorkspaceRequest,
   type GetWorkspaceRequest,
   type DeleteWorkspaceRequest,
+  type RenameWorkspaceRequest,
   type SetRoleAssignmentRequest,
   type ApplyPresetRequest,
 } from './ipc/workspaceHandlers.js'
@@ -110,6 +112,10 @@ function setupIpcHandlers(database: Database.Database): void {
   ipcMain.handle(
     IPC_CHANNELS.WORKSPACE_DELETE,
     (_e, req: DeleteWorkspaceRequest) => handleDeleteWorkspace(database, req),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.WORKSPACE_RENAME,
+    (_e, req: RenameWorkspaceRequest) => handleRenameWorkspace(database, req),
   )
   ipcMain.handle(
     IPC_CHANNELS.WORKSPACE_PICK_FOLDER,

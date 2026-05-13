@@ -27,6 +27,7 @@ export type WorkspaceStoreState = {
   createWorkspace: (name: string, root: string) => Promise<Workspace>
   selectWorkspace: (id: string) => Promise<void>
   deleteWorkspace: (id: string) => Promise<void>
+  renameWorkspace: (id: string, name: string) => Promise<void>
 
   refreshSecrets: () => Promise<void>
   addSecret: (input: {
@@ -140,6 +141,20 @@ export const useWorkspaceStore = create<WorkspaceStoreState>((set, get) => ({
     await window.polycoder.workspace.delete({ id })
     if (get().current?.id === id) {
       set({ current: null, secrets: [], roleAssignments: null })
+    }
+    await get().refreshWorkspaces()
+  },
+
+  async renameWorkspace(id, name) {
+    const result = await window.polycoder.workspace.rename({ id, name })
+    if (!result.ok) {
+      set({ error: result.error })
+      throw new Error(result.error)
+    }
+    // Update the in-memory current if it matches.
+    const cur = get().current
+    if (cur?.id === id) {
+      set({ current: { ...cur, name } })
     }
     await get().refreshWorkspaces()
   },

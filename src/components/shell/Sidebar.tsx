@@ -6,9 +6,10 @@ import { useEffect, useState } from 'react'
 import type { FC } from 'react'
 
 import { useWorkspaceStore } from '@/stores/workspace.js'
-import { usePreferencesStore } from '@/stores/preferences.js'
+import { formatCost, usePreferencesStore } from '@/stores/preferences.js'
 import {
   IconChevronDown,
+  IconEdit,
   IconMoon,
   IconPlus,
   IconSettings,
@@ -96,8 +97,10 @@ export const Sidebar: FC<{
   const current = useWorkspaceStore((s) => s.current)
   const selectWorkspace = useWorkspaceStore((s) => s.selectWorkspace)
   const deleteWorkspace = useWorkspaceStore((s) => s.deleteWorkspace)
+  const renameWorkspace = useWorkspaceStore((s) => s.renameWorkspace)
   const theme = usePreferencesStore((s) => s.theme)
   const toggleTheme = usePreferencesStore((s) => s.toggleTheme)
+  const costFormat = usePreferencesStore((s) => s.costFormat)
   const [wsOpen, setWsOpen] = useState(false)
   const [iters, setIters] = useState<IterationRow[]>([])
 
@@ -108,6 +111,22 @@ export const Sidebar: FC<{
     )
     if (!confirmed) return
     await deleteWorkspace(current.id)
+  }
+
+  async function onRenameCurrent(): Promise<void> {
+    if (!current) return
+    const next = window.prompt(
+      'Rename this project to:',
+      current.name,
+    )
+    if (!next || next.trim() === '' || next === current.name) return
+    try {
+      await renameWorkspace(current.id, next.trim())
+    } catch (e) {
+      window.alert(
+        `Couldn't rename: ${e instanceof Error ? e.message : String(e)}`,
+      )
+    }
   }
 
   useEffect(() => {
@@ -235,21 +254,34 @@ export const Sidebar: FC<{
               <IconPlus size={12} /> New project
             </button>
             {current ? (
-              <button
-                className="pc-btn"
-                data-variant="ghost"
-                style={{
-                  width: '100%',
-                  justifyContent: 'flex-start',
-                  color: 'var(--red)',
-                }}
-                onClick={() => {
-                  setWsOpen(false)
-                  void onDeleteCurrent()
-                }}
-              >
-                <IconTrash size={12} /> Delete current project
-              </button>
+              <>
+                <button
+                  className="pc-btn"
+                  data-variant="ghost"
+                  style={{ width: '100%', justifyContent: 'flex-start' }}
+                  onClick={() => {
+                    setWsOpen(false)
+                    void onRenameCurrent()
+                  }}
+                >
+                  <IconEdit size={12} /> Rename current project
+                </button>
+                <button
+                  className="pc-btn"
+                  data-variant="ghost"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'flex-start',
+                    color: 'var(--red)',
+                  }}
+                  onClick={() => {
+                    setWsOpen(false)
+                    void onDeleteCurrent()
+                  }}
+                >
+                  <IconTrash size={12} /> Delete current project
+                </button>
+              </>
             ) : null}
           </div>
         ) : null}
@@ -338,7 +370,7 @@ export const Sidebar: FC<{
                 </div>
                 {(h.total_cost_usd ?? 0) > 0 || h.duration_ms ? (
                   <div className="pc-mono" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
-                    {h.total_cost_usd ? `$${h.total_cost_usd.toFixed(2)}` : ''}
+                    {h.total_cost_usd ? formatCost(h.total_cost_usd, costFormat) : ''}
                     {h.total_cost_usd && h.duration_ms ? ' · ' : ''}
                     {h.duration_ms ? formatDuration(h.duration_ms) : ''}
                   </div>

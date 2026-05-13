@@ -9,9 +9,10 @@ import type { FC } from 'react'
 
 import { SecretsTab } from './SecretsTab.js'
 import { TeamConfigTab } from './TeamConfigTab.js'
-import { IconCpu, IconKey } from '@/components/icons.js'
+import { PreferencesTab } from './PreferencesTab.js'
+import { IconCpu, IconKey, IconSettings } from '@/components/icons.js'
 
-type Section = 'secrets' | 'team'
+type Section = 'secrets' | 'team' | 'preferences'
 
 export const Settings: FC<{ initialSection?: Section }> = ({
   initialSection = 'secrets',
@@ -38,6 +39,7 @@ export const Settings: FC<{ initialSection?: Section }> = ({
           [
             { id: 'secrets', label: 'Secrets', Icon: IconKey },
             { id: 'team', label: 'Team', Icon: IconCpu },
+            { id: 'preferences', label: 'Preferences', Icon: IconSettings },
           ] as const
         ).map((t) => {
           const active = section === t.id
@@ -88,7 +90,7 @@ export const Settings: FC<{ initialSection?: Section }> = ({
               </div>
               <SecretsTab />
             </>
-          ) : (
+          ) : section === 'team' ? (
             <>
               <div
                 style={{
@@ -112,6 +114,30 @@ export const Settings: FC<{ initialSection?: Section }> = ({
                 individual roles.
               </div>
               <TeamConfigTab />
+            </>
+          ) : (
+            <>
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  letterSpacing: '-0.015em',
+                  marginBottom: 4,
+                }}
+              >
+                Preferences
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  color: 'var(--ink-2)',
+                  marginBottom: 18,
+                  lineHeight: 1.5,
+                }}
+              >
+                How polycoder looks and reads to you. Saved on this computer.
+              </div>
+              <PreferencesTab />
             </>
           )}
         </div>

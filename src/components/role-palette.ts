@@ -47,6 +47,19 @@ export const ROLE_LABEL: Record<RoleType, string> = {
   communicator: 'Wrapping up',
 }
 
+// Plain-English one-liner per role — shown on hover in the timeline
+// so a vibe coder can learn who's doing what at a glance.
+export const ROLE_DESCRIPTION: Record<RoleType, string> = {
+  translator: 'Turns your prompt into a clear spec for the rest of the team.',
+  designer: 'Decides how your app should look and feel.',
+  architect: 'Decides how the code should be organized.',
+  coder: 'Writes the actual code that runs your app.',
+  adversary: 'Hunts for bugs and missing edge cases.',
+  long_term_critic: 'Watches for code that gets harder to maintain over time.',
+  test_runner: 'Writes and runs tests to make sure your app still works.',
+  communicator: 'Wraps everything up and tells you what changed.',
+}
+
 export function hueFor(role: string): number {
   return (ROLE_HUE as Record<string, number | undefined>)[role] ?? 220
 }
