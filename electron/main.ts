@@ -228,53 +228,19 @@ function createMainWindow(): BrowserWindow {
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 14, y: 12 },
     webPreferences: {
-      // CJS preload bundled via esbuild — Electron's contextBridge
-      // injection on ESM preload was silently dropping the exposed
-      // object in Electron 34. See V0.1.1 hot-fixes commit for the
-      // diagnosis.
+      // Preload is bundled as CJS via esbuild (build:electron in
+      // package.json). ESM preload silently dropped contextBridge
+      // exposures in Electron 34, so CJS is mandatory here. Because
+      // it's CJS we can also turn the renderer sandbox on, which
+      // restricts the renderer to a separate process with no Node
+      // access — the proper Electron security posture.
       preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      // sandbox: false because preload.js is ESM (compiled with
-      // module: ESNext for the rest of the electron tsconfig).
-      // Electron's sandboxed preload requires CommonJS — making
-      // the preload CJS while keeping main ESM needs a separate
-      // tsconfig pass; deferred. Tracked as a V0.1.1 follow-up.
-      sandbox: false,
+      sandbox: true,
     },
   })
 
-  // V0.1.1 diagnostic: ask the renderer what window.polycoder
-  // looks like after page load, write to disk so we can read it.
-  win.webContents.on('did-finish-load', () => {
-    void (async () => {
-      try {
-        const result = await win.webContents.executeJavaScript(`
-          (() => {
-            const api = window.polycoder;
-            return {
-              hasPolycoder: typeof api,
-              topKeys: api ? Object.keys(api) : [],
-              workspaceKeys: api?.workspace ? Object.keys(api.workspace) : null,
-              hasPickFolder: typeof api?.workspace?.pickFolder,
-              version: api?.version,
-            };
-          })()
-        `)
-        const { writeFileSync } = await import('node:fs')
-        writeFileSync(
-          '/tmp/polycoder-renderer-diag.json',
-          JSON.stringify({ ts: new Date().toISOString(), ...result }, null, 2),
-        )
-      } catch (e) {
-        const { writeFileSync } = await import('node:fs')
-        writeFileSync(
-          '/tmp/polycoder-renderer-diag.json',
-          JSON.stringify({ ts: new Date().toISOString(), error: String(e) }, null, 2),
-        )
-      }
-    })()
-  })
   if (isDev) {
     void win.loadURL(RENDERER_DEV_URL)
     win.webContents.openDevTools({ mode: 'detach' })

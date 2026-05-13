@@ -141,46 +141,7 @@ const polycoderAPI = {
   },
 } as const
 
-// V0.1.1 diagnostic: dump what we expose to a file so I can read
-// it from the agent side (renderer console.log can't be tailed).
-diagWritePreloadKeys(polycoderAPI)
 contextBridge.exposeInMainWorld('polycoder', polycoderAPI)
-
-function diagWritePreloadKeys(api: typeof polycoderAPI): void {
-  // eslint-disable-next-line no-console
-  console.log('[polycoder preload] exposing API. workspace keys:', Object.keys(api.workspace))
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const electronRequire = (globalThis as any).require as
-    | ((m: string) => unknown)
-    | undefined
-  if (!electronRequire) {
-    // eslint-disable-next-line no-console
-    console.error('[polycoder preload] no require available; sandbox blocking?')
-    return
-  }
-  try {
-    const fs = electronRequire('node:fs') as typeof import('node:fs')
-    fs.writeFileSync(
-      '/tmp/polycoder-preload-diag.json',
-      JSON.stringify(
-        {
-          ts: new Date().toISOString(),
-          workspaceKeys: Object.keys(api.workspace),
-          rolesKeys: Object.keys(api.roles),
-          iterationKeys: Object.keys(api.iteration),
-          secretsKeys: Object.keys(api.secrets),
-          electronVersion: process.versions.electron,
-          nodeVersion: process.versions.node,
-        },
-        null,
-        2,
-      ),
-    )
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('[polycoder preload] could not write diag:', e)
-  }
-}
 
 export type PolycoderAPI = typeof polycoderAPI
 
