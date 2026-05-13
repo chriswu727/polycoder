@@ -66,7 +66,8 @@ const MODE_HINT: Record<ComposerMode, string> = {
 
 const MODE_PLACEHOLDER: Record<ComposerMode, string> = {
   full: 'Tell your team what to build or change…',
-  quick: 'What small change do you want? e.g. "fix the off-by-one in foo.ts"',
+  quick:
+    'What small change do you want? Pin files with @path, e.g. "fix off-by-one in @src/auth.ts"',
 }
 
 export const ChatComposer: FC<{

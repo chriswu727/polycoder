@@ -39,6 +39,7 @@ import { ALL_TOOLS } from '@tools/registry.js'
 import { startIteration, finishIteration } from '../../data/iterations.js'
 import { appendCostRecord } from '../../data/costRecords.js'
 import { PipelineEventBus } from './events.js'
+import { parseAtMentions, formatMentionsContextBlock } from './atFileMentions.js'
 
 const QUICK_EDIT_TOOLS = [
   'read_file',
@@ -149,6 +150,17 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
     }
   }
 
+  // Pre-resolve @file mentions ONCE. Used twice:
+  //   1. buildUserMessage prepends each resolved file as a
+  //      <context_file> block.
+  //   2. ctx.read_files_in_iteration is seeded so edit_file's
+  //      read-before-edit check passes for pinned files.
+  const mentions = parseAtMentions(args.instruction, args.workspace.workspace_root)
+  const readSet = new Set<string>()
+  for (const r of mentions.resolved) {
+    readSet.add(`${args.workspace.workspace_root}/${r.path}`.replace(/\/+/g, '/'))
+  }
+
   const ctx: ToolContext = {
     workspace_id: args.workspace.id,
     workspace_root: args.workspace.workspace_root,
@@ -158,7 +170,7 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
     emit_event: emitEvent,
     db: args.db,
     keystore: args.keystore,
-    read_files_in_iteration: new Set<string>(),
+    read_files_in_iteration: readSet,
     iteration_number: iteration.iteration_number,
   }
 
@@ -175,7 +187,11 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
   let totalCostUsd = 0
 
   try {
-    const userMessage = buildUserMessage(args.instruction, args.workspace)
+    const userMessage = buildUserMessage(
+      args.instruction,
+      args.workspace,
+      mentions,
+    )
     const run = await runWithTools({
       provider: args.provider,
       model: args.model,
@@ -346,12 +362,27 @@ export async function runQuickEdit(args: QuickEditArgs): Promise<QuickEditResult
   }
 }
 
-function buildUserMessage(instruction: string, workspace: Workspace): string {
-  return [
+function buildUserMessage(
+  instruction: string,
+  workspace: Workspace,
+  mentions: ReturnType<typeof parseAtMentions>,
+): string {
+  const contextBlock = formatMentionsContextBlock(mentions)
+  const parts: string[] = [
     `Workspace: ${workspace.name}`,
     `Root: ${workspace.workspace_root}`,
     '',
-    'Instruction:',
-    instruction.trim(),
-  ].join('\n')
+  ]
+  if (contextBlock) {
+    parts.push(
+      "The user pinned these files with @-mentions. They're already in",
+      "context — you don't need to read them again with read_file unless",
+      'you want a different range.',
+      '',
+      contextBlock,
+      '',
+    )
+  }
+  parts.push('Instruction:', instruction.trim())
+  return parts.join('\n')
 }
