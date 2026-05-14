@@ -7,6 +7,7 @@ import type { FC } from 'react'
 
 import { useProducerStore } from '@/stores/producer.js'
 import { useWorkspaceStore } from '@/stores/workspace.js'
+import { useIterationStore } from '@/stores/iteration.js'
 import { formatCost, usePreferencesStore } from '@/stores/preferences.js'
 import { IconArrowUp, VerdictPlanet } from '@/components/icons.js'
 
@@ -34,6 +35,8 @@ export const ProducerChat: FC = () => {
   const loadHistory = useProducerStore((s) => s.loadHistory)
   const sendMessage = useProducerStore((s) => s.sendMessage)
   const costFormat = usePreferencesStore((s) => s.costFormat)
+  const teamCost = useIterationStore((s) => s.cumulativeCostUsd)
+  const combinedCost = totalCost + teamCost
 
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -130,7 +133,7 @@ export const ProducerChat: FC = () => {
           </div>
         </div>
         <div
-          title="PM 自己跟你聊天的 token 消耗。团队真去干活的成本另算（每个 iter 卡片上会显示）。"
+          title={`本次会话累计：PM 调度 ${formatCost(totalCost, costFormat)} + 团队工作 ${formatCost(teamCost, costFormat)}`}
           style={{
             textAlign: 'right',
             flex: '0 0 auto',
@@ -145,7 +148,7 @@ export const ProducerChat: FC = () => {
               textTransform: 'uppercase',
             }}
           >
-            PM 调度成本
+            本次 AI 用量
           </div>
           <div
             className="pc-mono"
@@ -157,17 +160,7 @@ export const ProducerChat: FC = () => {
               marginTop: 1,
             }}
           >
-            {formatCost(totalCost, costFormat)}
-          </div>
-          <div
-            className="pc-mono"
-            style={{
-              fontSize: 9.5,
-              color: 'var(--ink-3)',
-              marginTop: 1,
-            }}
-          >
-            （团队工作另算）
+            {formatCost(combinedCost, costFormat)}
           </div>
         </div>
       </div>

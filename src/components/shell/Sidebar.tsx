@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FC } from 'react'
 
 import { useWorkspaceStore } from '@/stores/workspace.js'
+import { useIterationStore } from '@/stores/iteration.js'
 import { formatCost, usePreferencesStore } from '@/stores/preferences.js'
 import {
   IconCheck,
@@ -104,6 +105,9 @@ export const Sidebar: FC<{
   const theme = usePreferencesStore((s) => s.theme)
   const toggleTheme = usePreferencesStore((s) => s.toggleTheme)
   const costFormat = usePreferencesStore((s) => s.costFormat)
+  // Auto-refresh the history list when an iteration finalizes —
+  // without it, the new row only appears on workspace switch.
+  const iterationStatus = useIterationStore((s) => s.status)
   const [wsOpen, setWsOpen] = useState(false)
   const [iters, setIters] = useState<IterationRow[]>([])
   // Inline edit state for the workspace dropdown — these replace
@@ -178,7 +182,10 @@ export const Sidebar: FC<{
     return () => {
       cancelled = true
     }
-  }, [current])
+    // The iterationStatus dep is intentional — once a run reaches
+    // completed/aborted/failed, refetch to pick up the new history row.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, iterationStatus])
 
   return (
     <div className="pane pane-history">

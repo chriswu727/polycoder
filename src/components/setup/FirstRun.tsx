@@ -38,12 +38,27 @@ const ROLE_LINEUP: RoleType[] = [
   'communicator',
 ]
 
+type SetupStep = 'idle' | 'creating' | 'saving-key' | 'testing-key' | 'applying-preset'
+
+const STEP_LABEL: Record<Exclude<SetupStep, 'idle'>, string> = {
+  'creating': '建项目工作区…',
+  'saving-key': '把 API key 存进系统钥匙串…',
+  'testing-key': '验证 key 能不能调通…',
+  'applying-preset': '给 8 个角色分配模型…',
+}
+
 export const FirstRun: FC = () => {
   const createWorkspace = useWorkspaceStore((s) => s.createWorkspace)
+  const addSecret = useWorkspaceStore((s) => s.addSecret)
+  const testSecret = useWorkspaceStore((s) => s.testSecret)
+  const refreshSecrets = useWorkspaceStore((s) => s.refreshSecrets)
+  const applyPreset = useWorkspaceStore((s) => s.applyPreset)
   const [name, setName] = useState('我的第一个项目')
   const [folder, setFolder] = useState('')
+  const [apiKey, setApiKey] = useState('')
+  const [showKey, setShowKey] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [step, setStep] = useState<SetupStep>('idle')
 
   async function onPickFolder(): Promise<void> {
     setError(null)
@@ -75,17 +90,79 @@ export const FirstRun: FC = () => {
   async function onSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     setError(null)
-    setSubmitting(true)
+
+    setStep('creating')
     try {
       await createWorkspace(name, folder)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setSubmitting(false)
+      setStep('idle')
+      return
     }
+
+    // If the user didn't paste a key, leave the team unconfigured —
+    // they can do it manually from Settings. The router will land
+    // them in the workspace and ProducerChat surfaces a clear error
+    // on first send if Translator/Coder aren't assigned.
+    const trimmedKey = apiKey.trim()
+    if (!trimmedKey) {
+      setStep('idle')
+      return
+    }
+
+    setStep('saving-key')
+    const addResult = await addSecret({
+      name: 'DeepSeek',
+      provider: 'deepseek',
+      api_key: trimmedKey,
+    })
+    if (!addResult.ok) {
+      setError(`保存 key 失败：${addResult.error ?? '未知错误'}。可以稍后在「设置 → 密钥」里再加。`)
+      setStep('idle')
+      return
+    }
+
+    setStep('testing-key')
+    await refreshSecrets()
+    // The secret we just added is the only one with provider=deepseek
+    // and no last_tested_at yet — grab it back.
+    const list = useWorkspaceStore.getState().secrets
+    const justAdded = list.find((s) => s.provider === 'deepseek')
+    if (justAdded) {
+      try {
+        const test = await testSecret(justAdded.id)
+        if (!test.ok) {
+          setError(
+            `key 没调通：${test.detail}。项目已经建好——你可以稍后在「设置」里重新加 key。`,
+          )
+          setStep('idle')
+          return
+        }
+      } catch (e) {
+        // testSecret only throws on no-workspace; we just created one.
+        setError(e instanceof Error ? e.message : String(e))
+        setStep('idle')
+        return
+      }
+    }
+
+    setStep('applying-preset')
+    try {
+      await applyPreset('budget')
+    } catch (e) {
+      setError(
+        `分配角色时出错：${e instanceof Error ? e.message : String(e)}。项目已经建好，去「设置 → 团队」点一下「Budget」就能继续。`,
+      )
+      setStep('idle')
+      return
+    }
+
+    setStep('idle')
+    // The router auto-transitions to WorkspaceShell once `current` is set.
   }
 
-  const canCreate = Boolean(name.trim() && folder)
+  const submitting = step !== 'idle'
+  const canCreate = Boolean(name.trim() && folder) && !submitting
 
   return (
     <div
@@ -196,7 +273,7 @@ export const FirstRun: FC = () => {
             />
           </label>
 
-          <label style={{ display: 'block', marginBottom: 18 }}>
+          <label style={{ display: 'block', marginBottom: 14 }}>
             <div
               style={{
                 fontSize: 11.5,
@@ -247,6 +324,95 @@ export const FirstRun: FC = () => {
             </div>
           </label>
 
+          <label style={{ display: 'block', marginBottom: 18 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: 6,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11.5,
+                  color: 'var(--ink-2)',
+                  fontWeight: 500,
+                  flex: 1,
+                }}
+              >
+                DeepSeek API key
+                <span
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 10.5,
+                    color: 'var(--ink-3)',
+                    fontWeight: 400,
+                  }}
+                >
+                  可跳过 · 之后在「设置」里加也行
+                </span>
+              </div>
+            </div>
+            <div
+              style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <input
+                className="pc-input pc-mono"
+                type={showKey ? 'text' : 'password'}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk-..."
+                autoComplete="off"
+                spellCheck={false}
+                style={{ paddingRight: 56 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey((s) => !s)}
+                className="pc-mono"
+                style={{
+                  position: 'absolute',
+                  right: 6,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: 10.5,
+                  color: 'var(--ink-3)',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: 4,
+                }}
+                tabIndex={-1}
+              >
+                {showKey ? '隐藏' : '显示'}
+              </button>
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: 'var(--ink-3)',
+                marginTop: 6,
+                lineHeight: 1.5,
+              }}
+            >
+              填了就一键搞定，团队立刻就能干活。DeepSeek 一条命令几分钱，
+              <a
+                href="https://platform.deepseek.com/api_keys"
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: 'var(--ink-2)' }}
+              >
+                去官网拿 key
+              </a>
+              。
+            </div>
+          </label>
+
           {error ? (
             <div
               style={{
@@ -277,11 +443,13 @@ export const FirstRun: FC = () => {
               fontSize: 14,
               fontWeight: 600,
             }}
-            disabled={!canCreate || submitting}
+            disabled={!canCreate}
           >
-            {submitting ? '正在让团队就位…' : '把团队叫进来'}
-            <IconArrowRight size={14} />
+            {submitting ? STEP_LABEL[step as Exclude<SetupStep, 'idle'>] : '把团队叫进来'}
+            {!submitting ? <IconArrowRight size={14} /> : null}
           </button>
+
+          {submitting ? <SetupProgressBar step={step} /> : null}
 
           <div
             style={{
@@ -292,9 +460,9 @@ export const FirstRun: FC = () => {
               lineHeight: 1.5,
             }}
           >
-            进去后第一件事是给团队配点 API key（DeepSeek / GLM 几毛钱一轮）。
-            <br />
-            到时候项目经理会带你做。
+            {apiKey.trim()
+              ? '配好就直接进项目，跟项目经理说一句就开干。'
+              : '没填 key 也能进项目——之后在「设置 → 密钥」里加，再选 Budget preset 即可。'}
           </div>
         </form>
       </div>
@@ -316,6 +484,50 @@ const RoleLineup: FC = () => (
     ))}
   </div>
 )
+
+const SETUP_STEPS: Exclude<SetupStep, 'idle'>[] = [
+  'creating',
+  'saving-key',
+  'testing-key',
+  'applying-preset',
+]
+
+const SetupProgressBar: FC<{ step: SetupStep }> = ({ step }) => {
+  if (step === 'idle') return null
+  const currentIdx = SETUP_STEPS.indexOf(step)
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        display: 'flex',
+        gap: 4,
+        padding: '0 2px',
+      }}
+    >
+      {SETUP_STEPS.map((s, i) => (
+        <div
+          key={s}
+          style={{
+            flex: 1,
+            height: 3,
+            borderRadius: 2,
+            background:
+              i < currentIdx
+                ? 'oklch(0.55 0.20 250)'
+                : i === currentIdx
+                  ? 'oklch(0.65 0.18 280)'
+                  : 'var(--surface-2)',
+            transition: 'background 200ms ease',
+            animation:
+              i === currentIdx
+                ? 'pc-progress-indeterminate 1.4s ease-in-out infinite'
+                : undefined,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
 
 const RolePill: FC<{ role: RoleType }> = ({ role }) => {
   const Icon = ROLE_ICONS[role]

@@ -503,6 +503,14 @@ async function invokeOne(io: InvokeOneArgs): Promise<InvokeRoleResult> {
     ctx,
     promptInputs,
     envelopeInputs,
+    onTokenChunk: (text_delta, accumulated_chars) => {
+      events.emit({
+        type: 'role_token_chunk',
+        role,
+        text_delta,
+        accumulated_chars,
+      })
+    },
   })
   const duration_ms = Date.now() - start + (start - factoryStart)
 

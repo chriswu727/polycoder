@@ -46,6 +46,17 @@ const ROLE_ORDER: RoleType[] = [
   'communicator',
 ]
 
+/** Keep the brand visible. "deepseek-chat" → "deepseek-chat" (no
+ *  truncation); "glm-4.6-flash" → "glm-4.6-flash". Only strip a
+ *  leading "provider/" prefix if present and the full thing is too
+ *  long for the card — the brand part wins over the version tail. */
+function prettyModelName(model: string): string {
+  const stripped = model.includes('/')
+    ? model.split('/').slice(-1)[0]!
+    : model
+  return stripped
+}
+
 type RowStatus = 'idle' | 'running' | 'completed' | 'failed' | 'retried'
 
 export const TeamMeetingRoom: FC<{ onAbort?: () => void }> = ({ onAbort }) => {
@@ -121,6 +132,8 @@ export const TeamMeetingRoom: FC<{ onAbort?: () => void }> = ({ onAbort }) => {
               status={rowStatus}
               model={rp?.model}
               errorDetail={rp?.errorDetail}
+              streamingTail={rp?.streamingTail}
+              isStreaming={rp?.isStreaming ?? false}
             />
           )
         })}
@@ -136,7 +149,9 @@ export const TeamMeetingRoom: FC<{ onAbort?: () => void }> = ({ onAbort }) => {
             background: 'var(--bg-2)',
           }}
         >
-          团队会议进行中——这一轮要 4-15 分钟。可以先去做别的事，做完会通知你。
+          {runningRole
+            ? `${ROLE_LABEL[runningRole]}正在工作——可以看右侧实时输出。`
+            : '团队在交接中…'}
         </div>
       ) : null}
     </div>
@@ -232,7 +247,9 @@ const RoleCard: FC<{
   status: RowStatus
   model?: string | undefined
   errorDetail?: string | undefined
-}> = ({ role, status, model, errorDetail }) => {
+  streamingTail?: string | undefined
+  isStreaming?: boolean
+}> = ({ role, status, model, errorDetail, streamingTail, isStreaming }) => {
   const Icon = ROLE_ICONS[role]
   const hue = hueFor(role)
   const swatch = roleSwatches(hue)
@@ -359,41 +376,67 @@ const RoleCard: FC<{
                   ? swatch.base
                   : 'var(--ink-3)',
               marginTop: 1,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
+              lineHeight: 1.3,
+              wordBreak: 'break-word',
             }}
           >
             {STATUS_LABEL[status]}
             {model && (isDone || isRunning)
-              ? ` · ${model.split(/[/_-]/).slice(-2).join('-').slice(0, 16)}`
+              ? ` · ${prettyModelName(model)}`
               : ''}
           </div>
         </div>
       </div>
 
       {isRunning ? (
-        <div
-          style={{
-            height: 2,
-            borderRadius: 2,
-            background: 'var(--surface-2)',
-            overflow: 'hidden',
-            position: 'relative',
-          }}
-        >
+        isStreaming && streamingTail && streamingTail.length > 0 ? (
+          <div
+            className="pc-mono"
+            style={{
+              fontSize: 10,
+              lineHeight: 1.4,
+              color: 'var(--ink-3)',
+              background: 'var(--surface-2)',
+              borderRadius: 4,
+              padding: '4px 6px',
+              maxHeight: 56,
+              overflow: 'hidden',
+              wordBreak: 'break-word',
+              fontVariantNumeric: 'tabular-nums',
+              // The tail flows from the bottom — newest text always
+              // visible. Vertical mask fades older text so the card
+              // feels like a teleprompter.
+              maskImage:
+                'linear-gradient(to bottom, transparent 0, rgba(0,0,0,1) 18px)',
+              WebkitMaskImage:
+                'linear-gradient(to bottom, transparent 0, rgba(0,0,0,1) 18px)',
+            }}
+          >
+            {streamingTail.slice(-160)}
+          </div>
+        ) : (
           <div
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '40%',
-              height: '100%',
-              background: swatch.base,
-              animation: 'pc-progress-indeterminate 1.6s ease-in-out infinite',
+              height: 2,
+              borderRadius: 2,
+              background: 'var(--surface-2)',
+              overflow: 'hidden',
+              position: 'relative',
             }}
-          />
-        </div>
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '40%',
+                height: '100%',
+                background: swatch.base,
+                animation: 'pc-progress-indeterminate 1.6s ease-in-out infinite',
+              }}
+            />
+          </div>
+        )
       ) : null}
       {isFailed && errorDetail ? (
         <div

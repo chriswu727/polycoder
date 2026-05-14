@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react'
 import type { FC } from 'react'
 
 import { useWorkspaceStore } from '@/stores/workspace.js'
+import { useIterationStore } from '@/stores/iteration.js'
 import { formatCost, usePreferencesStore } from '@/stores/preferences.js'
 import { VerdictPlanet } from '@/components/icons.js'
 
@@ -60,6 +61,10 @@ export const Gallery: FC<{
 }> = ({ onSelectIteration }) => {
   const current = useWorkspaceStore((s) => s.current)
   const costFormat = usePreferencesStore((s) => s.costFormat)
+  // Subscribe to iteration status so the gallery auto-refreshes the
+  // moment an iteration completes / aborts / fails — without this,
+  // users have to switch workspaces to see new entries.
+  const iterationStatus = useIterationStore((s) => s.status)
   const [iters, setIters] = useState<IterRow[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -83,6 +88,19 @@ export const Gallery: FC<{
     void refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id])
+
+  // Re-fetch on iteration finalization. Running → completed/aborted/
+  // failed is the moment a new row appears in the DB.
+  useEffect(() => {
+    if (
+      iterationStatus === 'completed' ||
+      iterationStatus === 'aborted' ||
+      iterationStatus === 'failed'
+    ) {
+      void refresh()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [iterationStatus])
 
   if (!current) return null
 

@@ -27,7 +27,18 @@ export type RoleProgress = {
   retryReason?: string
   envelopeStatus?: string
   errorDetail?: string
+  /** Live tail of the role's streaming output — used to show real
+   *  text appearing in the role card while it's running. Trimmed to
+   *  the most recent ~600 chars so a long monologue doesn't blow
+   *  the renderer's state size. Cleared when the role completes. */
+  streamingTail?: string
+  /** Whether we've started receiving stream chunks for this role.
+   *  Used by the UI to decide whether to show the tail vs the
+   *  generic indeterminate progress bar. */
+  isStreaming?: boolean
 }
+
+const STREAM_TAIL_MAX = 600
 
 export type IterationStateStatus =
   | 'idle'
@@ -353,17 +364,39 @@ function reduceEvent(
         ...next[event.role],
         status: 'running',
         model: event.model,
+        streamingTail: '',
+        isStreaming: false,
+      }
+      set({ roleProgress: next })
+      return
+    }
+    case 'role_token_chunk': {
+      const next = { ...state.roleProgress }
+      const prior = next[event.role]
+      const combined = (prior.streamingTail ?? '') + event.text_delta
+      const tail =
+        combined.length > STREAM_TAIL_MAX
+          ? combined.slice(combined.length - STREAM_TAIL_MAX)
+          : combined
+      next[event.role] = {
+        ...prior,
+        streamingTail: tail,
+        isStreaming: true,
       }
       set({ roleProgress: next })
       return
     }
     case 'role_completed': {
       const next = { ...state.roleProgress }
-      next[event.role] = {
-        ...next[event.role],
+      const prior = next[event.role]
+      const cleared: RoleProgress = {
+        role: event.role,
         status: 'completed',
         envelopeStatus: event.envelope.status,
+        isStreaming: false,
+        ...(prior.model !== undefined ? { model: prior.model } : {}),
       }
+      next[event.role] = cleared
       set({ roleProgress: next })
       return
     }

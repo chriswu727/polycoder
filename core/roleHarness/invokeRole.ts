@@ -65,6 +65,13 @@ export type InvokeRoleArgs = {
   promptInputs: DynamicPromptInputs
   /** Inputs for envelopeBuilder. */
   envelopeInputs: Omit<BuildInputEnvelopeArgs, 'role' | 'iteration'>
+  /**
+   * Optional streaming-token hook. Passed straight through to
+   * runWithTools; when set, the role's LLM call uses provider.stream()
+   * and fires onTokenChunk per content delta. Demo UI subscribes to
+   * this so the meeting-room cards show real text appearing.
+   */
+  onTokenChunk?: (text_delta: string, accumulated_chars: number) => void
 }
 
 export type InvokeRoleSuccess = {
@@ -152,6 +159,7 @@ export async function invokeRole(args: InvokeRoleArgs): Promise<InvokeRoleResult
         tools,
         ctx,
         maxToolCalls: maxToolCallsFor(role),
+        ...(args.onTokenChunk ? { onTokenChunk: args.onTokenChunk } : {}),
       })
     } catch (e) {
       if (e instanceof ToolLoopBudgetExceeded) {

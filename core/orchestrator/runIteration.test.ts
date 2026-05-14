@@ -83,8 +83,28 @@ function makeMockProvider(envelopeForRole: (role: RoleType) => string): ModelPro
         raw_response: undefined,
       })
     },
-    stream(): AsyncIterable<StreamEvent> {
-      throw new Error('stream not used')
+    async *stream(req: ChatRequest): AsyncIterable<StreamEvent> {
+      const sys = (req.messages.find((m) => m.role === 'system')?.content ?? '') as string
+      const role = inferRoleFromSystemPrompt(sys)
+      const xml = envelopeForRole(role)
+      yield { type: 'content_delta', delta: xml }
+      yield {
+        type: 'message_complete',
+        response: {
+          id: randomUUID(),
+          content: xml,
+          tool_calls: [],
+          finish_reason: 'stop',
+          usage: {
+            input_tokens: 100,
+            output_tokens: 50,
+            cached_input_tokens: 0,
+            total_tokens: 150,
+            estimated_cost_usd: 0.001,
+          },
+          raw_response: undefined,
+        },
+      }
     },
     testConnection(): Promise<TestConnectionResult> {
       return Promise.resolve({ ok: true, available_models: [] })
@@ -381,8 +401,25 @@ describe('runIteration — failure surfaces structured error', () => {
           raw_response: undefined,
         })
       },
-      stream(): AsyncIterable<StreamEvent> {
-        throw new Error('not used')
+      async *stream(): AsyncIterable<StreamEvent> {
+        yield { type: 'content_delta', delta: 'this is just plain prose, no envelope' }
+        yield {
+          type: 'message_complete',
+          response: {
+            id: 'x',
+            content: 'this is just plain prose, no envelope',
+            tool_calls: [],
+            finish_reason: 'stop',
+            usage: {
+              input_tokens: 1,
+              output_tokens: 1,
+              cached_input_tokens: 0,
+              total_tokens: 2,
+              estimated_cost_usd: 0,
+            },
+            raw_response: undefined,
+          },
+        }
       },
       testConnection(): Promise<TestConnectionResult> {
         return Promise.resolve({ ok: true, available_models: [] })

@@ -6,7 +6,7 @@
 // Reload on iteration change is driven by the `reloadKey` prop
 // (typically the iteration_id) which forces the iframe to remount.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FC } from 'react'
 
 import { IconExternal, IconRefresh } from '@/components/icons.js'
@@ -65,20 +65,50 @@ export type PreviewState =
   | { kind: 'ready'; iterLabel: string; reloadKey?: string }
   | { kind: 'failed-show-prior' }
 
-const LiveIframe: FC<{ url: string; reloadKey?: string | undefined }> = ({ url, reloadKey }) => (
-  <iframe
-    key={reloadKey ?? url}
-    src={url}
-    title="Live preview"
-    style={{
-      width: '100%',
-      height: '100%',
-      border: 'none',
-      background: 'white',
-    }}
-    sandbox="allow-scripts allow-forms allow-same-origin"
-  />
-)
+const LiveIframe: FC<{ url: string; reloadKey?: string | undefined }> = ({
+  url,
+  reloadKey,
+}) => {
+  const ref = useRef<HTMLIFrameElement | null>(null)
+  const lastReloadKey = useRef<string | undefined>(undefined)
+
+  // Smooth reload: when reloadKey changes, ask the SAME iframe to
+  // navigate fresh instead of remounting the element (which causes
+  // a white-flash). On the very first mount we let the src attribute
+  // do its job; subsequent reloads go through contentWindow.
+  useEffect(() => {
+    if (reloadKey === lastReloadKey.current) return
+    const first = lastReloadKey.current === undefined
+    lastReloadKey.current = reloadKey
+    if (first) return
+    const win = ref.current?.contentWindow
+    if (win) {
+      try {
+        win.location.replace(url)
+      } catch {
+        // Cross-origin guard could throw; fall back to changing src.
+        if (ref.current) ref.current.src = url
+      }
+    } else if (ref.current) {
+      ref.current.src = url
+    }
+  }, [reloadKey, url])
+
+  return (
+    <iframe
+      ref={ref}
+      src={url}
+      title="实时预览"
+      style={{
+        width: '100%',
+        height: '100%',
+        border: 'none',
+        background: 'white',
+      }}
+      sandbox="allow-scripts allow-forms allow-same-origin"
+    />
+  )
+}
 
 export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
   const current = useWorkspaceStore((s) => s.current)
@@ -124,8 +154,8 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
   if (state.kind === 'empty-no-key') {
     content = (
       <EmptyPreview
-        message="No project yet"
-        sub="Once you've named a project and added a key, your app will live here."
+        message="还没有项目"
+        sub="起个名、加好 key，做出来的东西就出现在这里。"
       />
     )
   } else if (state.kind === 'empty-idle') {
@@ -140,7 +170,7 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
             {current?.name} · index.html
           </span>
           <span className="status-pill" data-tone="muted" style={{ fontSize: 10 }}>
-            live
+            实时
           </span>
           <span style={{ flex: 1 }} />
           <button
@@ -148,7 +178,7 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
             data-variant="ghost"
             data-size="sm"
             onClick={() => setReloadTick((t) => t + 1)}
-            title="Reload preview"
+            title="刷新预览"
           >
             <IconRefresh size={11} />
           </button>
@@ -159,7 +189,7 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
             onClick={() => {
               if (previewUrl) void window.open(previewUrl, '_blank')
             }}
-            title="Open in browser"
+            title="在浏览器中打开"
           >
             <IconExternal size={11} />
           </button>
@@ -168,16 +198,16 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
     } else {
       content = (
         <EmptyPreview
-          message="Your app will appear here"
-          sub="Send a prompt and your team will start building."
+          message="你的应用会出现在这里"
+          sub="跟 PM 说一句要做什么，团队就开始干。"
         />
       )
     }
   } else if (state.kind === 'building') {
     content = (
       <EmptyPreview
-        message="Building…"
-        sub="Your app preview will pop in here when the team finishes."
+        message="团队正在构建…"
+        sub="做完会自动出现在这里，可以一边看右上角的进度。"
       />
     )
   } else if (state.kind === 'failed-show-prior') {
@@ -191,15 +221,15 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
     } else {
       content = (
         <EmptyPreview
-          message="Last working version"
-          sub="The previous iteration is preserved exactly as you left it."
+          message="上一个能跑的版本"
+          sub="上一轮的成果原样保留——这一轮没动到它。"
         />
       )
     }
     header = (
       <div style={HEADER_BG}>
         <span className="status-pill" data-tone="muted">
-          last working
+          上一轮能跑的
         </span>
         <span style={{ flex: 1 }} />
         <button
@@ -207,7 +237,7 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
           data-variant="ghost"
           data-size="sm"
           onClick={() => setReloadTick((t) => t + 1)}
-          title="Reload preview"
+          title="刷新预览"
         >
           <IconRefresh size={11} />
         </button>
@@ -225,8 +255,8 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
     } else {
       content = (
         <EmptyPreview
-          message="No preview server yet"
-          sub="Restart polycoder to start the preview server."
+          message="预览服务还没启动"
+          sub="重启 polycoder 启动预览服务。"
         />
       )
     }
@@ -236,7 +266,7 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
           {state.iterLabel}
         </span>
         <span className="status-pill" data-tone="muted" style={{ fontSize: 10 }}>
-          live preview
+          实时预览
         </span>
         <span style={{ flex: 1 }} />
         <button
@@ -244,7 +274,7 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
           data-variant="ghost"
           data-size="sm"
           onClick={() => setReloadTick((t) => t + 1)}
-          title="Reload preview"
+          title="刷新预览"
         >
           <IconRefresh size={11} />
         </button>
@@ -255,7 +285,7 @@ export const PreviewPane: FC<{ state: PreviewState }> = ({ state }) => {
           onClick={() => {
             if (previewUrl) void window.open(previewUrl, '_blank')
           }}
-          title="Open in browser"
+          title="在浏览器中打开"
         >
           <IconExternal size={11} />
         </button>

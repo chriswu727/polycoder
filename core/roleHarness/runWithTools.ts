@@ -59,6 +59,15 @@ export type RunWithToolsArgs = {
    * become the starting point. Used for Quick Edit follow-up.
    */
   initialMessages?: ChatMessage[]
+  /**
+   * Streaming-token hook. When supplied, runWithTools consumes the
+   * provider via `stream()` instead of `chat()` and fires this for
+   * every content delta — giving the UI a live "tail" of what the
+   * role is producing. When omitted, behavior is unchanged (chat()
+   * one-shot). text_delta is the new fragment only;
+   * accumulated_chars is the running total for this provider call.
+   */
+  onTokenChunk?: (text_delta: string, accumulated_chars: number) => void
 }
 
 export type RunWithToolsResult = {
@@ -124,7 +133,9 @@ export async function runWithTools(
       ...(toolSchemas.length > 0 ? { tools: toolSchemas, tool_choice: 'auto' as const } : {}),
     }
 
-    const response: ChatResponse = await provider.chat(request, ctx.abort_signal)
+    const response: ChatResponse = args.onTokenChunk
+      ? await collectStream(provider, request, ctx.abort_signal, args.onTokenChunk)
+      : await provider.chat(request, ctx.abort_signal)
     accumulateUsage(totalUsage, response)
 
     // Append the assistant's turn — even if it's a tool-use turn, we
@@ -270,6 +281,45 @@ function briefForArgs(toolName: string, args: unknown): string {
       return typeof v === 'string' ? v.slice(0, 60) : ''
     }
   }
+}
+
+/**
+ * Wraps provider.stream() and returns a ChatResponse-shape object
+ * once the message_complete event fires. Fires onTokenChunk for each
+ * content_delta along the way. Tool-call deltas pass through silently
+ * (they're surfaced via the regular tool-loop after message_complete).
+ */
+async function collectStream(
+  provider: ModelProvider,
+  request: ChatRequest,
+  signal: AbortSignal | undefined,
+  onTokenChunk: (text_delta: string, accumulated_chars: number) => void,
+): Promise<ChatResponse> {
+  let acc = 0
+  for await (const evt of provider.stream(request, signal)) {
+    if (evt.type === 'content_delta') {
+      acc += evt.delta.length
+      try {
+        onTokenChunk(evt.delta, acc)
+      } catch {
+        // chunk consumer must not break the inner loop
+      }
+    } else if (evt.type === 'message_complete') {
+      return evt.response
+    } else if (evt.type === 'error') {
+      // Mirror chat()'s contract — surface as a thrown ProviderError
+      // shape so callers' retry logic kicks in identically. We don't
+      // import the full class here to avoid the cycle that motivated
+      // ProviderErrorPayload's existence; throw a plain Error with
+      // the same code/message so upstream sees parity.
+      const e = new Error(evt.error.message)
+      ;(e as Error & { code?: string }).code = evt.error.code
+      throw e
+    }
+    // tool_call_* deltas: ignored here. The aggregated tool_calls
+    // come back via message_complete's response.tool_calls.
+  }
+  throw new Error('provider.stream ended without message_complete')
 }
 
 function extractErrorBrief(content: string): string {

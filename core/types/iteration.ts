@@ -101,6 +101,23 @@ export type PipelineResult =
 export type PipelineEvent =
   | { type: 'iteration_started'; iteration_id: string; user_prompt: string }
   | { type: 'role_started'; role: z.infer<typeof RoleTypeSchema>; model: string }
+  /**
+   * Streaming token chunk from the role currently running. Emitted
+   * for each SSE delta the provider returns. The UI uses this to
+   * show a live "tail" of what the role is producing, so the demo
+   * audience sees text appearing instead of an indeterminate spinner.
+   *
+   * `text_delta` is the new tokens only (not cumulative).
+   * `accumulated_chars` is the running total emitted so far for this
+   * role attempt — lets the UI clip the visible tail without
+   * receiving the whole stream up to that point.
+   */
+  | {
+      type: 'role_token_chunk'
+      role: z.infer<typeof RoleTypeSchema>
+      text_delta: string
+      accumulated_chars: number
+    }
   | { type: 'role_completed'; role: z.infer<typeof RoleTypeSchema>; envelope: z.infer<typeof RoleOutputEnvelopeSchema> }
   | { type: 'role_failed'; role: z.infer<typeof RoleTypeSchema>; error: string }
   | { type: 'role_retried'; role: z.infer<typeof RoleTypeSchema>; attempt: number; reason: string }

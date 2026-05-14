@@ -11,6 +11,7 @@ import type { FC } from 'react'
 
 import { useWorkspaceStore } from '@/stores/workspace.js'
 import { useIterationStore } from '@/stores/iteration.js'
+import { ensureWebContainerForWorkspace } from '@/lib/webcontainerManager.js'
 
 import { Sidebar } from './Sidebar.js'
 import { ProducerChat } from './ProducerChat.js'
@@ -49,6 +50,16 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
       const off = bootstrap(() => useWorkspaceStore.getState().current?.id ?? null)
       return off
     }, [bootstrap])
+
+    // Preheat the WebContainer the moment a workspace opens so the
+    // 沙盒 tab is ready (or close to ready) when the user clicks it.
+    // We swallow the promise — the manager handles state via its own
+    // subscription system.
+    const currentId = current?.id
+    useEffect(() => {
+      if (!currentId) return
+      void ensureWebContainerForWorkspace(currentId)
+    }, [currentId])
 
     if (!current) return null
 
