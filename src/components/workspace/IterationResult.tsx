@@ -812,7 +812,7 @@ const ShareCardButton: FC<{ iterationId: string }> = ({ iterationId }) => {
         style={{ fontSize: 11, color: 'var(--green)' }}
         title={state.path}
       >
-        ✓ 分享卡已生成（在 .polycoder/）
+        分享卡已生成（在 .polycoder/ 文件夹）
       </span>
     )
   }
@@ -914,14 +914,14 @@ const RevertControl: FC<{
   if (state.kind === 'done') {
     const detail =
       state.restored + state.deleted === 0
-        ? 'nothing to restore'
-        : `${state.restored} restored${state.deleted > 0 ? `, ${state.deleted} deleted` : ''}`
+        ? '没什么可撤销'
+        : `恢复了 ${state.restored} 个文件${state.deleted > 0 ? `，删了 ${state.deleted} 个` : ''}`
     return (
       <span
         className="pc-mono"
         style={{ fontSize: 11, color: 'var(--green)' }}
       >
-        ✓ {detail}
+        已撤销 · {detail}
       </span>
     )
   }

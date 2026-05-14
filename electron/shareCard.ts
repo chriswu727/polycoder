@@ -131,12 +131,11 @@ function renderShareCardHtml(opts: {
     .map((r) => {
       const env = opts.roleOutputs[r]!
       const model = opts.modelByRole[r] ?? env.model ?? 'unknown'
-      const summary = (env.summary ?? '').replace(/</g, '&lt;')
       return `
         <div class="role-row">
           <div class="role-name">${escapeHtml(ROLE_LABEL[r])}</div>
           <div class="role-model">${escapeHtml(model)}</div>
-          <div class="role-summary">${summary}</div>
+          <div class="role-summary">${escapeHtml(env.summary ?? '')}</div>
         </div>`
     })
     .join('')

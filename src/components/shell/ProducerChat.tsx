@@ -25,9 +25,10 @@ export const ProducerChat: FC = () => {
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
+  const currentId = current?.id
   useEffect(() => {
-    if (current) void loadHistory(current.id)
-  }, [current?.id, loadHistory, current])
+    if (currentId) void loadHistory(currentId)
+  }, [currentId, loadHistory])
 
   useEffect(() => {
     const el = scrollRef.current
@@ -116,6 +117,7 @@ export const ProducerChat: FC = () => {
           </div>
         </div>
         <div
+          title="PM 自己跟你聊天的 token 消耗。团队真去干活的成本另算（每个 iter 卡片上会显示）。"
           style={{
             textAlign: 'right',
             flex: '0 0 auto',
@@ -130,7 +132,7 @@ export const ProducerChat: FC = () => {
               textTransform: 'uppercase',
             }}
           >
-            本次会话开销
+            PM 调度成本
           </div>
           <div
             className="pc-mono"
@@ -143,6 +145,16 @@ export const ProducerChat: FC = () => {
             }}
           >
             ${totalCost.toFixed(4)}
+          </div>
+          <div
+            className="pc-mono"
+            style={{
+              fontSize: 9.5,
+              color: 'var(--ink-3)',
+              marginTop: 1,
+            }}
+          >
+            （团队工作另算）
           </div>
         </div>
       </div>
@@ -487,7 +499,7 @@ const DeliveryCard: FC<{ iterationId: string }> = ({ iterationId }) => {
         >
           {sharing === 'idle' && '生成分享卡'}
           {sharing === 'pending' && '生成中…'}
-          {sharing === 'done' && '✓ 已生成'}
+          {sharing === 'done' && '已生成'}
           {sharing === 'error' && '生成失败'}
         </button>
       </div>

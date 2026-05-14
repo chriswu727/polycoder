@@ -24,6 +24,16 @@ import type { WebContainer } from '@webcontainer/api'
 
 import { useWorkspaceStore } from '@/stores/workspace.js'
 
+const PKG_MANAGERS = ['pnpm', 'yarn', 'bun', 'npm'] as const
+type PkgManager = (typeof PKG_MANAGERS)[number]
+
+function detectPackageManager(files: string[]): PkgManager {
+  if (files.includes('pnpm-lock.yaml')) return 'pnpm'
+  if (files.includes('yarn.lock')) return 'yarn'
+  if (files.includes('bun.lock') || files.includes('bun.lockb')) return 'bun'
+  return 'npm'
+}
+
 type BootState =
   | { kind: 'idle' }
   | { kind: 'booting'; message: string }
@@ -37,12 +47,17 @@ export const WebContainerHost: FC = () => {
 
   useEffect(() => {
     if (!current) return
+    // `cancelled` blocks setState + further awaits. `tearDownPending`
+    // tracks the WebContainer instance the moment it's available so
+    // the cleanup can hand it off even if the effect's `inst` is
+    // still in-flight.
     let cancelled = false
+    let tearDownPending: WebContainer | null = null
 
     void (async () => {
-      // Sanity check: cross-origin isolation must be on for
-      // WebContainer to boot. If missing, surface a useful error
-      // rather than getting cryptic SharedArrayBuffer errors later.
+      // Cross-origin isolation must be on for WebContainer to boot.
+      // If missing, surface useful error rather than cryptic
+      // SharedArrayBuffer errors later.
       if (typeof window !== 'undefined' && !window.crossOriginIsolated) {
         if (!cancelled) {
           setState({
@@ -58,10 +73,13 @@ export const WebContainerHost: FC = () => {
 
       try {
         const mod = await import('@webcontainer/api')
+        if (cancelled) return
         const inst = await mod.WebContainer.boot()
         containerRef.current = inst
+        tearDownPending = inst
         if (cancelled) {
-          await inst.teardown()
+          void inst.teardown()
+          tearDownPending = null
           return
         }
 
@@ -70,8 +88,10 @@ export const WebContainerHost: FC = () => {
         const files = await window.polycoder.workspace.listFiles({
           workspace_id: current.id,
         })
+        if (cancelled) return
         const tree: Record<string, { file: { contents: string } }> = {}
         for (const f of files) {
+          if (cancelled) return
           const r = await window.polycoder.workspace.readFile({
             workspace_id: current.id,
             path: f.path,
@@ -80,16 +100,14 @@ export const WebContainerHost: FC = () => {
             tree[f.path] = { file: { contents: r.content } }
           }
         }
-        if (cancelled) {
-          await inst.teardown()
-          return
-        }
+        if (cancelled) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await inst.mount(tree as any)
 
-        // Detect framework. If package.json exists, run install + dev.
-        const hasPackageJson = files.some((f) => f.path === 'package.json')
-        if (!hasPackageJson) {
+        // Detect framework + which package manager. If the project
+        // has a lockfile, use that manager. Default to npm.
+        const pkgEntry = tree['package.json']
+        if (!pkgEntry) {
           setState({
             kind: 'failed',
             reason:
@@ -97,23 +115,30 @@ export const WebContainerHost: FC = () => {
           })
           return
         }
+        const pm = detectPackageManager(files.map((f) => f.path))
 
-        setState({ kind: 'booting', message: '安装依赖 (pnpm install)...' })
-        const install = await inst.spawn('npm', ['install'])
+        setState({
+          kind: 'booting',
+          message: `安装依赖 (${pm} install)...`,
+        })
+        const installArgs = pm === 'pnpm' || pm === 'yarn' ? ['install'] : ['install']
+        const install = await inst.spawn(pm, installArgs)
         const installCode = await install.exit
         if (cancelled) return
         if (installCode !== 0) {
           setState({
             kind: 'failed',
-            reason: `npm install 失败 (exit ${installCode})`,
+            reason: `${pm} install 失败 (exit ${installCode})`,
           })
           return
         }
 
+        // Pick the right `<pm> run dev` invocation.
         setState({ kind: 'booting', message: '启动 dev server...' })
-        await inst.spawn('npm', ['run', 'dev'])
+        // We don't await — dev server runs in background, we listen
+        // for server-ready.
+        void inst.spawn(pm, ['run', 'dev'])
 
-        // Listen for the server-ready event
         inst.on('server-ready', (_port, url) => {
           if (!cancelled) setState({ kind: 'running', url })
         })
@@ -129,8 +154,11 @@ export const WebContainerHost: FC = () => {
 
     return () => {
       cancelled = true
-      if (containerRef.current) {
-        void containerRef.current.teardown()
+      // Tear down whichever instance is current — handles the case
+      // where boot completes after the effect was canceled.
+      const inst = containerRef.current ?? tearDownPending
+      if (inst) {
+        void inst.teardown()
         containerRef.current = null
       }
     }

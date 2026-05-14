@@ -9,7 +9,7 @@
 // with (name, absolutePath) once both are filled in. The renderer
 // router auto-transitions to WorkspaceShell after that.
 
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import type { FC } from 'react'
 
 import type { RoleType } from '@core/types/role.js'
@@ -302,25 +302,22 @@ export const FirstRun: FC = () => {
   )
 }
 
-const RoleLineup: FC = () => {
-  const uid = useId()
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 6,
-        justifyContent: 'center',
-      }}
-    >
-      {ROLE_LINEUP.map((role) => (
-        <RolePill key={role} role={role} keyHint={`${uid}-${role}`} />
-      ))}
-    </div>
-  )
-}
+const RoleLineup: FC = () => (
+  <div
+    style={{
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: 6,
+      justifyContent: 'center',
+    }}
+  >
+    {ROLE_LINEUP.map((role) => (
+      <RolePill key={role} role={role} />
+    ))}
+  </div>
+)
 
-const RolePill: FC<{ role: RoleType; keyHint: string }> = ({ role }) => {
+const RolePill: FC<{ role: RoleType }> = ({ role }) => {
   const Icon = ROLE_ICONS[role]
   const hue = hueFor(role)
   const swatch = roleSwatches(hue)

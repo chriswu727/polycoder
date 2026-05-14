@@ -184,8 +184,16 @@ const GalleryCard: FC<{
   }
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
       className="pc-card fade-up"
       style={{
         padding: 16,
@@ -267,16 +275,15 @@ const GalleryCard: FC<{
         }}
       >
         <span
-          className="pc-btn"
-          data-variant="ghost"
-          data-size="sm"
+          className="pc-mono"
           style={{
-            pointerEvents: 'none',
             flex: 1,
-            justifyContent: 'center',
+            fontSize: 11,
+            color: 'var(--ink-2)',
+            alignSelf: 'center',
           }}
         >
-          看一眼
+          点开看 →
         </span>
         <button
           onClick={doShare}
@@ -286,12 +293,12 @@ const GalleryCard: FC<{
           disabled={sharing === 'pending' || sharing === 'done'}
         >
           {sharing === 'idle' && '分享卡'}
-          {sharing === 'pending' && '…'}
-          {sharing === 'done' && '✓'}
-          {sharing === 'error' && '!'}
+          {sharing === 'pending' && '生成中'}
+          {sharing === 'done' && '已生成'}
+          {sharing === 'error' && '失败'}
         </button>
       </div>
-    </button>
+    </div>
   )
 }
 

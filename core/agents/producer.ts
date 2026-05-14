@@ -34,8 +34,23 @@ import { runQuickEdit } from './../orchestrator/runQuickEdit.js'
 import { PipelineEventBus } from './../orchestrator/events.js'
 import { POLYCODER_PROMPT_BOUNDARY } from '@providers/prepareSystemPrompt.js'
 import { listWorkspaceFiles, readWorkspaceFile } from '../../electron/workspaceFiles.js'
-import { buildTool } from '@tools/ToolDef.js'
+import { buildTool, type BuiltTool, type ToolName } from '@tools/ToolDef.js'
 import { z } from 'zod'
+
+// Producer's tools live OUTSIDE the global ToolName registry — they
+// dispatch back into the orchestrator and are local to this agent.
+// `buildTool`'s `name` field is typed against ToolName for global
+// tools; we cast here in one place so the rest of the agent code
+// reads as plain TypeScript.
+function localProducerTool<I, O>(
+  args: Omit<Parameters<typeof buildTool<I, O>>[0], 'name'> & { name: string },
+): BuiltTool<I, O> {
+  return buildTool({
+    ...args,
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    name: args.name as ToolName,
+  })
+}
 
 // ─── Prompt loading ─────────────────────────────────────────────────
 
@@ -240,8 +255,8 @@ export async function runProducerTurn(
   // Build the tool implementations that close over `args`. These are
   // BuiltTool instances so they ride through runWithTools' existing
   // input-validation + output-serialization machinery.
-  const runFullPipelineTool = buildTool({
-    name: 'run_full_pipeline' as const as never, // not in ToolName enum
+  const runFullPipelineTool = localProducerTool({
+    name: 'run_full_pipeline',
     description:
       'Dispatch the full 8-role team (Translator → Designer → Architect → Coder → Adversary || Long-term Critic || Test Runner → Communicator) on the given user prompt. Returns traffic_light + files_changed + cost. Use when the user wants to BUILD or majorly RESTRUCTURE.',
     inputSchema: RunFullPipelineInputSchema,
@@ -316,8 +331,8 @@ export async function runProducerTurn(
     },
   })
 
-  const runQuickEditTool = buildTool({
-    name: 'run_quick_edit' as const as never,
+  const runQuickEditTool = localProducerTool({
+    name: 'run_quick_edit',
     description:
       'Dispatch only the Coder for a SMALL change to an existing file (e.g. "change button color to blue"). Faster + cheaper than run_full_pipeline. Use for tweaks, not new features.',
     inputSchema: RunQuickEditInputSchema,
@@ -368,8 +383,8 @@ export async function runProducerTurn(
     },
   })
 
-  const listFilesTool = buildTool({
-    name: 'list_workspace_files' as const as never,
+  const listFilesTool = localProducerTool({
+    name: 'list_workspace_files',
     description:
       'List files in the workspace (capped, dot-files and node_modules excluded). Use to know what already exists before deciding what to build.',
     inputSchema: ListFilesInputSchema,
@@ -386,8 +401,8 @@ export async function runProducerTurn(
     },
   })
 
-  const readFileTool = buildTool({
-    name: 'read_workspace_file' as const as never,
+  const readFileTool = localProducerTool({
+    name: 'read_workspace_file',
     description:
       'Read a single file from the workspace. Use to check what is actually in a file before answering a user question about it.',
     inputSchema: ReadFileInputSchema,
