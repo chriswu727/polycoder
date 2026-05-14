@@ -95,6 +95,26 @@ CREATE TABLE IF NOT EXISTS iterations (
 CREATE INDEX IF NOT EXISTS idx_iterations_workspace_started
   ON iterations(workspace_id, started_at DESC);
 
+-- ─── Producer messages (conversational agent history per workspace) ─
+-- The Producer (项目经理) is a 9th LLM agent that sits on top of the
+-- 8-role pipeline. Each user message + Producer reply lives here.
+-- Conversation persists across the workspace lifetime.
+
+CREATE TABLE IF NOT EXISTS producer_messages (
+  id              TEXT PRIMARY KEY,
+  workspace_id    TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  seq             INTEGER NOT NULL,
+  role            TEXT NOT NULL,
+  content         TEXT NOT NULL,
+  tool_calls_json TEXT,
+  tool_call_id    TEXT,
+  iteration_id    TEXT,
+  created_at      INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_producer_messages_workspace_seq
+  ON producer_messages(workspace_id, seq);
+
 -- ─── Iteration messages ─────────────────────────────────────────────
 -- One row per LLM message produced during an iteration. Captured for
 -- Quick Edit follow-up / conversation continuation — a follow-up

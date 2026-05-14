@@ -13,349 +13,22 @@ import { useWorkspaceStore } from '@/stores/workspace.js'
 import { useIterationStore } from '@/stores/iteration.js'
 
 import { Sidebar } from './Sidebar.js'
-import { ChatBubble, ChatComposer, ChatPane, type ComposerMode } from './ChatPane.js'
+import { ProducerChat } from './ProducerChat.js'
 import { RolePipelineProgress } from '@/components/workspace/RolePipelineProgress.js'
 import { IterationResult } from '@/components/workspace/IterationResult.js'
 import { PreviewPane, type PreviewState } from '@/components/workspace/PreviewPane.js'
 import { CodeBrowser } from '@/components/workspace/CodeBrowser.js'
-import {
-  Chorus,
-  IconArrowRight,
-  Mark,
-  MissionDashboard,
-  MissionLanding,
-  MissionNotes,
-  MissionTodo,
-  VerdictPlanet,
-} from '@/components/icons.js'
-import type { FC as FCType } from 'react'
-import type { CommunicatorPayload } from '@core/types/payloads/communicator.js'
+import { WebContainerHost } from '@/components/workspace/WebContainerHost.js'
 
-type SamplePrompt = {
-  key: 'todo' | 'landing' | 'dashboard' | 'notes'
-  label: string
-  hint: string
-  Glyph: FCType<{ size?: number | undefined }>
-}
-
-const SAMPLE_PROMPTS: SamplePrompt[] = [
-  {
-    key: 'todo',
-    label: 'A simple to-do list',
-    hint: 'Categories, due dates, saves automatically.',
-    Glyph: MissionTodo,
-  },
-  {
-    key: 'landing',
-    label: 'A SaaS landing page',
-    hint: 'Hero, features, pricing, footer.',
-    Glyph: MissionLanding,
-  },
-  {
-    key: 'dashboard',
-    label: 'A sales dashboard',
-    hint: 'KPIs, table, mini chart.',
-    Glyph: MissionDashboard,
-  },
-  {
-    key: 'notes',
-    label: 'A markdown notes app',
-    hint: 'Live preview, side-by-side editor.',
-    Glyph: MissionNotes,
-  },
-]
-
-const VERDICT_BUBBLE_LABEL: Record<'green' | 'yellow' | 'red', string> = {
-  green: 'Looks good',
-  yellow: 'Built, with notes',
-  red: 'Needs your input',
-}
-
-const IdleChat: FC<{ onSend: (text: string) => void }> = ({ onSend }) => {
-  // V3 cosmic hero: brand mark + wordmark + chorus eyebrow + a
-  // 56px asking-headline, then 4 mission-glyph cards. Picks 3
-  // out of 4 sample prompts so the layout breathes.
-  const visiblePrompts = SAMPLE_PROMPTS.slice(0, 3)
-  return (
-    <div style={{ paddingTop: 36, maxWidth: 540 }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          marginBottom: 32,
-        }}
-      >
-        <Mark size={22} />
-        <span className="pc-wordmark" style={{ fontSize: 17, lineHeight: 1 }}>
-          polycoder
-        </span>
-        <span
-          style={{
-            width: 1,
-            height: 12,
-            background: 'var(--border)',
-            margin: '0 2px',
-          }}
-        />
-        <span
-          className="pc-mono"
-          style={{ fontSize: 10.5, color: 'var(--ink-3)' }}
-        >
-          today
-        </span>
-        <span style={{ flex: 1 }} />
-        <span
-          className="pc-mono"
-          style={{
-            fontSize: 10,
-            color: 'var(--ink-3)',
-            letterSpacing: '0.04em',
-          }}
-        >
-          /{new Date().getFullYear()}
-        </span>
-      </div>
-      <div className="pc-bracket-eyebrow" style={{ marginBottom: 14 }}>
-        <span>[</span>
-        <span>8 roles · one team</span>
-        <span>]</span>
-      </div>
-      <div
-        style={{
-          fontSize: 56,
-          fontWeight: 700,
-          letterSpacing: '-0.030em',
-          lineHeight: 1.0,
-          marginBottom: 16,
-          color: 'var(--ink)',
-        }}
-      >
-        What should we make today?
-      </div>
-      <div
-        style={{
-          fontSize: 14,
-          color: 'var(--ink-2)',
-          marginBottom: 28,
-          lineHeight: 1.55,
-        }}
-      >
-        Tell us in plain words — no code needed. Your team of 8 will figure
-        out how to build it.
-      </div>
-
-      <div className="pc-eyebrow" style={{ marginBottom: 10 }}>
-        Or start from one of these:
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {visiblePrompts.map((s) => {
-          const Glyph = s.Glyph
-          return (
-            <button
-              key={s.key}
-              onClick={() => onSend(s.label)}
-              className="pc-prompt-card"
-            >
-              <div
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 6,
-                  background: 'var(--surface-2)',
-                  color: 'var(--ink-2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flex: '0 0 auto',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                <Glyph size={14} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
-                  {s.label}
-                </div>
-                <div
-                  style={{
-                    fontSize: 11.5,
-                    color: 'var(--ink-3)',
-                    marginTop: 1,
-                  }}
-                >
-                  {s.hint}
-                </div>
-              </div>
-              <IconArrowRight
-                size={12}
-                style={{ color: 'var(--ink-3)', flex: '0 0 auto' }}
-              />
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-const ChatBody: FC = () => {
-  const status = useIterationStore((s) => s.status)
-  const mode = useIterationStore((s) => s.mode)
-  const result = useIterationStore((s) => s.result)
-  const userPrompt = useIterationStore((s) => s.user_prompt)
-  const iterationNumber = useIterationStore((s) => s.iteration_number)
-  const sendStart = useIterationStore((s) => s.start)
-  const currentWs = useWorkspaceStore((s) => s.current)
-
-  const onSend = (text: string): void => {
-    if (!currentWs) return
-    void sendStart(currentWs.id, text)
-  }
-
-  if (status === 'idle' && !result) {
-    return <IdleChat onSend={onSend} />
-  }
-
-  const isQuick = mode === 'quick'
-
-  return (
-    <>
-      {userPrompt ? <ChatBubble from="user">{userPrompt}</ChatBubble> : null}
-
-      {status === 'running' ? (
-        <div
-          style={{
-            display: 'flex',
-            gap: 10,
-            marginBottom: 12,
-            alignItems: 'center',
-            padding: '10px 12px',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-          }}
-        >
-          <Chorus pulse size={6} />
-          <div style={{ flex: 1, fontSize: 12.5, color: 'var(--ink-2)' }}>
-            {isQuick ? (
-              <>
-                Coder is on it.{' '}
-                <span style={{ color: 'var(--ink-3)' }}>
-                  5-15 seconds typical.
-                </span>
-              </>
-            ) : (
-              <>
-                Your team is talking it through.{' '}
-                <span style={{ color: 'var(--ink-3)' }}>
-                  5-15 minutes typical.
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      {(status === 'completed' || status === 'aborted') &&
-      result?.status === 'completed' &&
-      !isQuick ? (
-        <CompletedTeamBubble
-          verdict={result.traffic_light}
-          iterationNumber={iterationNumber}
-          payload={
-            result.role_outputs.communicator?.payload as
-              | CommunicatorPayload
-              | undefined
-          }
-        />
-      ) : null}
-
-      {(status === 'completed' || status === 'aborted') &&
-      result?.status === 'completed' &&
-      isQuick ? (
-        <ChatBubble
-          from="team"
-          meta={`iter ${String(iterationNumber ?? 0).padStart(2, '0')} · quick edit`}
-        >
-          <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
-            {result.files_changed.length === 0
-              ? "I didn't need to change any files. See the summary on the right."
-              : `Edited ${result.files_changed.length} file${
-                  result.files_changed.length === 1 ? '' : 's'
-                }. Summary + diff on the right.`}
-          </div>
-        </ChatBubble>
-      ) : null}
-
-      {status === 'failed' && result?.status === 'failed' ? (
-        <ChatBubble
-          from="team"
-          meta={`iter ${String(iterationNumber ?? 0).padStart(2, '0')} · stopped`}
-        >
-          <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
-            I stopped before burning more credits. The full breakdown is on the
-            right — including what to try next.
-          </div>
-        </ChatBubble>
-      ) : null}
-    </>
-  )
-}
-
-const CompletedTeamBubble: FC<{
-  verdict: 'green' | 'yellow' | 'red'
-  iterationNumber: number | null
-  payload: CommunicatorPayload | undefined
-}> = ({ verdict, iterationNumber, payload }) => {
-  const label = VERDICT_BUBBLE_LABEL[verdict]
-  return (
-    <ChatBubble
-      from="team"
-      meta={`iter ${String(iterationNumber ?? 0).padStart(2, '0')} · ${label}`}
-    >
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
-        <VerdictPlanet verdict={verdict} size={28} />
-        <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
-      </div>
-      {payload?.user_facing_text ? (
-        <div
-          style={{
-            fontSize: 13,
-            lineHeight: 1.5,
-            color: 'var(--ink-2)',
-            whiteSpace: 'pre-wrap',
-          }}
-        >
-          {payload.user_facing_text.length > 280
-            ? payload.user_facing_text.slice(0, 280).trimEnd() + '…'
-            : payload.user_facing_text}
-        </div>
-      ) : null}
-    </ChatBubble>
-  )
-}
-
-function detectPresetLabel(
-  roleAssignments:
-    | Record<string, { model_id: string | null; secret_id: string | null }>
-    | null,
-): string | null {
-  // Quick heuristic: if all 8 roles have a model_id assigned, label
-  // as the preset most likely matching. We just count "all set" vs
-  // not. Real preset detection (matching against PRESET assignments)
-  // would need the preset definitions imported; deferred.
-  if (!roleAssignments) return null
-  const total = Object.keys(roleAssignments).length
-  const set = Object.values(roleAssignments).filter((a) => a.secret_id && a.model_id).length
-  if (total > 0 && set === total) return 'Custom'
-  return null
-}
+// The old IdleChat hero + ChatBody / CompletedTeamBubble /
+// detectPresetLabel rendered the pre-Producer chat flow.
+// ProducerChat (src/components/shell/ProducerChat.tsx) now owns the
+// whole user-message surface — it handles greeting, conversation,
+// and dispatch in one place.
 
 export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace: () => void }> =
   ({ onOpenSettings, onCreateWorkspace }) => {
     const current = useWorkspaceStore((s) => s.current)
-    const roleAssignments = useWorkspaceStore((s) => s.roleAssignments)
     const status = useIterationStore((s) => s.status)
     const result = useIterationStore((s) => s.result)
     const iterationNumber = useIterationStore((s) => s.iteration_number)
@@ -363,11 +36,9 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
     const reset = useIterationStore((s) => s.reset)
     const bootstrap = useIterationStore((s) => s.bootstrap)
     const [activeIter, setActiveIter] = useState<string | null>(null)
-    const [composerMode, setComposerMode] = useState<ComposerMode>('quick')
-    /** When set, the next send through the composer is a Quick Edit
-     *  follow-up that continues the named iteration's conversation. */
-    const [followUpOf, setFollowUpOf] = useState<string | null>(null)
-    const [rightTab, setRightTab] = useState<'preview' | 'code'>('preview')
+    const [rightTab, setRightTab] = useState<'preview' | 'code' | 'sandbox'>(
+      'preview',
+    )
 
     useEffect(() => {
       const off = bootstrap(() => useWorkspaceStore.getState().current?.id ?? null)
@@ -397,8 +68,6 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
               }
             : { kind: 'empty-idle' }
 
-    const presetLabel = detectPresetLabel(roleAssignments)
-
     return (
       <div
         className="panes"
@@ -423,46 +92,12 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
           onCreateWorkspace={onCreateWorkspace}
         />
 
-        <ChatPane
-          footer={
-            <ChatComposer
-              mode={composerMode}
-              onModeChange={(m) => {
-                setComposerMode(m)
-                // Switching out of quick clears any pending follow-up.
-                if (m !== 'quick') setFollowUpOf(null)
-              }}
-              followUpLabel={
-                followUpOf
-                  ? `continuing iter ${String(iterationNumber ?? 0).padStart(2, '0')}`
-                  : undefined
-              }
-              onClearFollowUp={() => setFollowUpOf(null)}
-              onSend={(text, mode) => {
-                if (!current) return
-                if (mode === 'quick') {
-                  if (followUpOf) {
-                    void useIterationStore
-                      .getState()
-                      .continueQuickEdit(current.id, followUpOf, text)
-                    setFollowUpOf(null)
-                  } else {
-                    void useIterationStore
-                      .getState()
-                      .startQuickEdit(current.id, text)
-                  }
-                } else {
-                  void useIterationStore.getState().start(current.id, text)
-                  setFollowUpOf(null)
-                }
-              }}
-              disabled={status === 'running'}
-              {...(presetLabel ? { presetLabel } : {})}
-            />
-          }
+        <div
+          className="pane pane-chat"
+          style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
         >
-          <ChatBody />
-        </ChatPane>
+          <ProducerChat />
+        </div>
 
         {hasIterationActivity ? (
           <div
@@ -490,12 +125,7 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
                     }}
                   />
                 ) : (
-                  <IterationResult
-                    onContinueQuickEdit={() => {
-                      const iterId = useIterationStore.getState().iteration_id
-                      if (iterId) setFollowUpOf(iterId)
-                    }}
-                  />
+                  <IterationResult />
                 )}
               </div>
               <div
@@ -520,7 +150,7 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
                   role="tablist"
                   aria-label="Right pane mode"
                 >
-                  {(['preview', 'code'] as const).map((t) => (
+                  {(['preview', 'code', 'sandbox'] as const).map((t) => (
                     <button
                       key={t}
                       role="tab"
@@ -543,12 +173,18 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
                         textTransform: 'capitalize',
                       }}
                     >
-                      {t === 'preview' ? 'Preview' : 'Code'}
+                      {t === 'preview'
+                        ? 'Preview'
+                        : t === 'code'
+                          ? 'Code'
+                          : 'Sandbox'}
                     </button>
                   ))}
                 </div>
                 <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                  {rightTab === 'preview' ? (
+                  {rightTab === 'sandbox' ? (
+                    <WebContainerHost />
+                  ) : rightTab === 'preview' ? (
                     <PreviewPane state={previewState} />
                   ) : (
                     <CodeBrowser />

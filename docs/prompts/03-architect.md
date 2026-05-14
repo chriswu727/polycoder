@@ -228,6 +228,49 @@ explicitly call out "do NOT install shadcn/ui / Tailwind / a build
 system" so the Coder reads it as a hard constraint, not a missed
 detail.
 
+### 7.9 Backend story — when Supabase is the right answer
+
+If Translator's `inferred_constraints` mention **multi-user / cloud
+sync / login required / shared / 多人 / 多设备 / 云端 / 登录**, the
+single-file localStorage path won't suffice. Promote to a Supabase
+BaaS path:
+
+| Translator signal | Architect decides |
+|---|---|
+| "save to my account" / "cloud" / 云端 | Supabase Postgres + supabase-js client |
+| "login" / "签到" / 登录 | Supabase Auth (email + magic link by default) |
+| "multi-user" / 多人 | Supabase Auth + Row Level Security policies |
+| "real-time" / 实时同步 | Supabase Realtime subscriptions |
+
+**Supabase upgrade `patterns_to_follow` template** (copy + adapt):
+
+```
+{
+  "pattern": "Backend: Supabase (Postgres + Auth + Realtime). User provides project URL + anon key via .env.local. Architecture is BYOK — polycoder does NOT spin up infrastructure. App reads keys from import.meta.env at boot.",
+  "why": "Translator says <X feature> requires server state. Supabase has the lowest setup friction for a vibe coder (no docker, no migrations beyond SQL editor in their UI) and per-user RLS handles auth correctly out of the box.",
+  "files_to_touch": ["src/lib/supabase.ts", ".env.local.example"]
+},
+{
+  "pattern": "Table schema lives in supabase/migrations/<timestamp>_<feature>.sql. Coder writes the SQL there; user runs it in Supabase dashboard SQL editor.",
+  "why": "polycoder doesn't have credentials to apply migrations remotely. Putting SQL in a versioned file makes user's one-time copy-paste explicit + safe.",
+  "files_to_touch": ["supabase/migrations/<timestamp>_<feature>.sql"]
+}
+```
+
+**What the Communicator surfaces to the user when this path triggers**
+(Architect → memory_updates → Communicator picks up): "I need you to
+do TWO things to make this work: (1) create a Supabase project at
+supabase.com → copy URL + anon key into .env.local, (2) open SQL
+editor and paste the migration file I created."
+
+**Hard rule**: Architect MUST NOT direct Coder to invent a different
+backend (Firebase, custom express server, MongoDB, etc.) when
+Supabase fits. Reasons: BYOK is simpler, supabase-js is the only
+backend client we currently train the pipeline against, and adding
+more backend variants fragments quality testing. If user EXPLICITLY
+asks for a different backend, surface as `conflicts` + `recommendation:
+ask_user` per §7.3.
+
 ## 8. Anti-patterns
 
 NEVER:

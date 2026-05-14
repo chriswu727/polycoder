@@ -772,8 +772,69 @@ const QuickEditResult: FC<{ onContinue?: (() => void) | undefined }> = ({ onCont
             onCancel={() => setRevertState({ kind: 'idle' })}
           />
         ) : null}
+        {iterationId ? <ShareCardButton iterationId={iterationId} /> : null}
       </div>
     </div>
+  )
+}
+
+const ShareCardButton: FC<{ iterationId: string }> = ({ iterationId }) => {
+  const [state, setState] = useState<
+    | { kind: 'idle' }
+    | { kind: 'pending' }
+    | { kind: 'done'; path: string }
+    | { kind: 'error'; msg: string }
+  >({ kind: 'idle' })
+
+  async function generate(): Promise<void> {
+    setState({ kind: 'pending' })
+    try {
+      const res = await window.polycoder.iteration.shareCard({
+        iteration_id: iterationId,
+      })
+      if (!res.ok) {
+        setState({ kind: 'error', msg: res.error })
+        return
+      }
+      setState({ kind: 'done', path: res.path })
+    } catch (e) {
+      setState({
+        kind: 'error',
+        msg: e instanceof Error ? e.message : String(e),
+      })
+    }
+  }
+
+  if (state.kind === 'done') {
+    return (
+      <span
+        className="pc-mono"
+        style={{ fontSize: 11, color: 'var(--green)' }}
+        title={state.path}
+      >
+        ✓ 分享卡已生成（在 .polycoder/）
+      </span>
+    )
+  }
+  if (state.kind === 'error') {
+    return (
+      <span
+        className="pc-mono"
+        style={{ fontSize: 11, color: 'var(--red)' }}
+      >
+        生成失败: {state.msg.slice(0, 60)}
+      </span>
+    )
+  }
+  return (
+    <button
+      className="pc-btn"
+      data-variant="ghost"
+      onClick={() => void generate()}
+      disabled={state.kind === 'pending'}
+    >
+      {state.kind === 'pending' ? '生成中…' : '生成分享卡'}
+    </button>
   )
 }
 

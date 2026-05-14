@@ -141,6 +141,23 @@ You receive a user message structured as:
    / a build pipeline, record THAT signal too so Architect doesn't
    under-engineer.
 
+4b. **PRESERVE BACKEND SIGNALS LITERALLY.** Specifically watch for:
+
+   - 云端 / cloud / sync / 同步 → "Needs cross-device sync; backend required"
+   - 多人 / multi-user / shared / 分享给别人 → "Multi-user; auth + per-user data partitioning required"
+   - 登录 / login / sign in / 账号 → "User accounts; auth required"
+   - 实时 / real-time / 实时同步 → "Real-time updates between clients"
+   - "我的朋友也能用" / "send to my friend" → multi-user
+
+   Record these in `inferred_constraints` so Architect §7.9 can
+   correctly choose Supabase (or another BaaS) instead of trying to
+   make localStorage do impossible things. Without these signals,
+   Architect defaults to single-user, no-backend — fine for most apps
+   but wrong when the user implied otherwise.
+
+   Conversely, if user says "**就我自己用 / just for me / single
+   user**", record that — Architect should NOT introduce a backend.
+
 5. **For iterations (after iteration 1)**, focus on `delta_from_prior`.
    The user's iteration prompt is usually short ("now add login") and
    you must reconcile it with the prior `intent_summary`. Do NOT rewrite

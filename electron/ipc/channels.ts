@@ -18,6 +18,8 @@ export const IPC_CHANNELS = {
   WORKSPACE_LIST_FILES: 'polycoder.workspace.listFiles',
   /** Read a single workspace file's content for the code viewer. */
   WORKSPACE_READ_FILE: 'polycoder.workspace.readFile',
+  /** Generate the shareable iteration recap card HTML. */
+  ITERATION_SHARE_CARD: 'polycoder.iteration.shareCard',
 
   // Roles
   ROLE_SET_ASSIGNMENT: 'polycoder.role.setAssignment',
@@ -32,6 +34,12 @@ export const IPC_CHANNELS = {
   ITERATION_QUICK_EDIT: 'polycoder.iteration.quickEdit',
   /** Restore the workspace files to their pre-iteration state. */
   ITERATION_REVERT: 'polycoder.iteration.revert',
+  /** Send a user message to the Producer conversational agent.
+   *  Producer decides whether to ask clarification, dispatch a
+   *  full pipeline, or run a Quick Edit, then replies. */
+  PRODUCER_SEND: 'polycoder.producer.send',
+  /** Load prior Producer conversation messages for a workspace. */
+  PRODUCER_HISTORY: 'polycoder.producer.history',
   /** Main → renderer push channel for pipeline events. */
   ITERATION_EVENT: 'polycoder.iteration.event',
 

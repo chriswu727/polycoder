@@ -447,7 +447,10 @@ export async function runProducerTurn(
       initialMessages,
       tools,
       ctx,
-      maxToolCalls: 6, // Producer rarely needs more than 1-2 dispatches per turn
+      // Producer needs headroom for the self-correction loop in
+       // prompt §8 — up to 3 dispatches + occasional list/read calls
+       // means we want ~8 to be comfortable.
+       maxToolCalls: 10,
       onToolCall: (obs) => {
         toolInvocations.push({
           name: obs.tool_name as ProducerToolName,

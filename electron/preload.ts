@@ -44,6 +44,12 @@ import type {
   RevertIterationResponse,
   RendererPipelineEvent,
 } from './ipc/pipelineHandlers.js'
+import type {
+  ProducerSendRequest,
+  ProducerSendResponse,
+  ProducerHistoryRequest,
+  ProducerHistoryResponse,
+} from './ipc/producerHandlers.js'
 
 const polycoderAPI = {
   version: '0.0.1',
@@ -114,6 +120,15 @@ const polycoderAPI = {
     revert(req: RevertIterationRequest): Promise<RevertIterationResponse> {
       return ipcRenderer.invoke(IPC_CHANNELS.ITERATION_REVERT, req) as Promise<RevertIterationResponse>
     },
+    shareCard(req: { iteration_id: string }): Promise<
+      | { ok: true; path: string; html: string }
+      | { ok: false; error: string }
+    > {
+      return ipcRenderer.invoke(IPC_CHANNELS.ITERATION_SHARE_CARD, req) as Promise<
+        | { ok: true; path: string; html: string }
+        | { ok: false; error: string }
+      >
+    },
     /**
      * Subscribe to streaming pipeline events. Returns an unsubscribe
      * function. Events are filtered renderer-side by workspace_id
@@ -125,6 +140,15 @@ const polycoderAPI = {
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.ITERATION_EVENT, handler)
       }
+    },
+  },
+
+  producer: {
+    send(req: ProducerSendRequest): Promise<ProducerSendResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.PRODUCER_SEND, req) as Promise<ProducerSendResponse>
+    },
+    history(req: ProducerHistoryRequest): Promise<ProducerHistoryResponse> {
+      return ipcRenderer.invoke(IPC_CHANNELS.PRODUCER_HISTORY, req) as Promise<ProducerHistoryResponse>
     },
   },
 

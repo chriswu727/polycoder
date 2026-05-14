@@ -24,6 +24,7 @@ import {
   type WorkspaceFileEntry,
   type ReadWorkspaceFileResult,
 } from './workspaceFiles.js'
+import { generateShareCard, type GenerateShareCardResult } from './shareCard.js'
 import {
   getPreviewUrl,
   setPreviewRoot,
@@ -69,6 +70,12 @@ import {
   type QuickEditRequest,
   type RevertIterationRequest,
 } from './ipc/pipelineHandlers.js'
+import {
+  handleProducerSend,
+  handleProducerHistory,
+  type ProducerSendRequest,
+  type ProducerHistoryRequest,
+} from './ipc/producerHandlers.js'
 import type Database from 'better-sqlite3'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -258,6 +265,39 @@ function setupIpcHandlers(database: Database.Database): void {
     IPC_CHANNELS.ITERATION_REVERT,
     (e, req: RevertIterationRequest) =>
       handleRevertIteration(
+        {
+          ...deps,
+          forwardEvent: makeWebContentsForwarder(
+            IPC_CHANNELS.ITERATION_EVENT,
+            e.sender,
+          ),
+        },
+        req,
+      ),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.PRODUCER_SEND,
+    (e, req: ProducerSendRequest) =>
+      handleProducerSend(
+        {
+          ...deps,
+          forwardEvent: makeWebContentsForwarder(
+            IPC_CHANNELS.ITERATION_EVENT,
+            e.sender,
+          ),
+        },
+        req,
+      ),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.ITERATION_SHARE_CARD,
+    (_e, req: { iteration_id: string }): GenerateShareCardResult =>
+      generateShareCard({ db: database, iteration_id: req.iteration_id }),
+  )
+  ipcMain.handle(
+    IPC_CHANNELS.PRODUCER_HISTORY,
+    (e, req: ProducerHistoryRequest) =>
+      handleProducerHistory(
         {
           ...deps,
           forwardEvent: makeWebContentsForwarder(

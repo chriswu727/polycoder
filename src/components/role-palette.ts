@@ -33,31 +33,32 @@ export const ROLE_SHORT: Record<RoleType, string> = {
   communicator: 'wrapping up',
 }
 
-// Friendly action labels used in the timeline + chat-bubble verdict
-// labels. Internal RoleType IDs unchanged in the orchestrator; this
-// is the display layer.
+// Friendly Chinese labels — the team's "human-readable" job titles.
+// Internal RoleType IDs stay English in the orchestrator; this is the
+// display layer the user sees. Each label is the team member's role,
+// in a tone a non-coder middle-aged user would recognize.
 export const ROLE_LABEL: Record<RoleType, string> = {
-  translator: 'Understanding your idea',
-  designer: 'Sketching the layout',
-  architect: 'Planning the structure',
-  coder: 'Writing your app',
-  adversary: 'Double-checking',
-  long_term_critic: 'Reviewing',
-  test_runner: 'Testing',
-  communicator: 'Wrapping up',
+  translator: '需求翻译师',
+  designer: '设计师',
+  architect: '架构远见师',
+  coder: '写码工程师',
+  adversary: '挑刺专家',
+  long_term_critic: '资深架构师',
+  test_runner: '测试小组',
+  communicator: '信息官',
 }
 
-// Plain-English one-liner per role — shown on hover in the timeline
-// so a vibe coder can learn who's doing what at a glance.
+// One-line role description, shown on hover in the meeting-room view.
+// Plain Chinese, no English jargon.
 export const ROLE_DESCRIPTION: Record<RoleType, string> = {
-  translator: 'Turns your prompt into a clear spec for the rest of the team.',
-  designer: 'Decides how your app should look and feel.',
-  architect: 'Decides how the code should be organized.',
-  coder: 'Writes the actual code that runs your app.',
-  adversary: 'Hunts for bugs and missing edge cases.',
-  long_term_critic: 'Watches for code that gets harder to maintain over time.',
-  test_runner: 'Writes and runs tests to make sure your app still works.',
-  communicator: 'Wraps everything up and tells you what changed.',
+  translator: '听你说想做什么，把它翻成团队能用的清晰需求。',
+  designer: '决定你的产品该长什么样、有什么交互。',
+  architect: '决定代码用什么技术、文件怎么组织、整体结构。',
+  coder: '团队里唯一真正动手写代码的人。',
+  adversary: '挑刺。专门找 bug、边界 case、安全漏洞。',
+  long_term_critic: '看长期——这次改动会不会让代码以后难维护。',
+  test_runner: '写测试、跑测试、确认产品真能用。',
+  communicator: '把团队做的事用大白话告诉你，包括坏消息。',
 }
 
 export function hueFor(role: string): number {
