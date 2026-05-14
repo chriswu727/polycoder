@@ -425,6 +425,10 @@ input:focus, textarea:focus { outline: none; }
   0%   { transform: translateX(-40%); }
   100% { transform: translateX(280%); }
 }
+@keyframes pc-bounce-dot {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.6; }
+  40%           { transform: translateY(-3px); opacity: 1; }
+}
 .fade-up { animation: pc-fade-up 280ms cubic-bezier(.2,.7,.2,1) both; }
 
 /* role chip */

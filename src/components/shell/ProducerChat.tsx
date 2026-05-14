@@ -7,7 +7,7 @@ import type { FC } from 'react'
 
 import { useProducerStore } from '@/stores/producer.js'
 import { useWorkspaceStore } from '@/stores/workspace.js'
-import { IconArrowUp, IconSparkle } from '@/components/icons.js'
+import { IconArrowUp, VerdictPlanet } from '@/components/icons.js'
 
 const PRODUCER_GREETING =
   '你好。我是这个项目的项目经理（PM），帮你协调一支 8 人的 AI 团队。\n\n告诉我你想做什么——可以模糊（"做个能记账的"），也可以具体（"改一下这里的颜色"）。我先问几个澄清的事，然后让团队上手。'
@@ -54,38 +54,95 @@ export const ProducerChat: FC = () => {
         minHeight: 0,
       }}
     >
-      {/* Header */}
+      {/* Header — Producer as the central character */}
       <div
         style={{
-          padding: '10px 14px',
+          padding: '14px 16px',
           borderBottom: '1px solid var(--hairline)',
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 12,
+          background:
+            'linear-gradient(135deg, oklch(0.65 0.18 280 / 0.06), transparent 60%)',
         }}
       >
         <div
           style={{
-            width: 26,
-            height: 26,
-            borderRadius: 8,
-            background: 'var(--accent-soft)',
-            color: 'var(--accent)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            position: 'relative',
+            flex: '0 0 auto',
           }}
         >
-          <IconSparkle size={13} />
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 11,
+              background:
+                'linear-gradient(135deg, oklch(0.65 0.18 280), oklch(0.55 0.20 250))',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 14px oklch(0.55 0.20 250 / 0.35)',
+              fontSize: 14,
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+            }}
+          >
+            PM
+          </div>
+          {sending ? (
+            <div
+              style={{
+                position: 'absolute',
+                inset: -3,
+                borderRadius: 13,
+                border: '1.5px solid oklch(0.65 0.18 280)',
+                animation: 'pc-pulse-ring 1.6s ease-out infinite',
+                pointerEvents: 'none',
+              }}
+            />
+          ) : null}
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 500 }}>项目经理 (PM)</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em' }}>
+            项目经理
+          </div>
           <div
             className="pc-mono"
-            style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 1 }}
+            style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}
           >
-            你的 AI 团队入口 · 总开销 $
-            {totalCost.toFixed(4)}
+            8 人 AI 团队 · 你只跟我聊
+          </div>
+        </div>
+        <div
+          style={{
+            textAlign: 'right',
+            flex: '0 0 auto',
+          }}
+        >
+          <div
+            className="pc-mono"
+            style={{
+              fontSize: 10,
+              color: 'var(--ink-3)',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+            }}
+          >
+            本次会话开销
+          </div>
+          <div
+            className="pc-mono"
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: 'var(--ink)',
+              fontVariantNumeric: 'tabular-nums',
+              marginTop: 1,
+            }}
+          >
+            ${totalCost.toFixed(4)}
           </div>
         </div>
       </div>
@@ -107,21 +164,45 @@ export const ProducerChat: FC = () => {
           <ChatBubble role="assistant">{PRODUCER_GREETING}</ChatBubble>
         ) : null}
         {messages.map((m, i) => (
-          <ChatBubble key={i} role={m.role}>
-            {m.content}
-          </ChatBubble>
+          <div
+            key={i}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+              gap: 8,
+            }}
+          >
+            <ChatBubble role={m.role}>{m.content}</ChatBubble>
+            {m.role === 'assistant' && m.iteration_id ? (
+              <DeliveryCard iterationId={m.iteration_id} />
+            ) : null}
+          </div>
         ))}
         {sending ? (
           <div
-            className="pc-mono"
             style={{
-              fontSize: 11,
-              color: 'var(--ink-3)',
-              fontStyle: 'italic',
-              padding: '4px 10px',
+              display: 'flex',
+              gap: 8,
+              alignItems: 'center',
+              padding: '6px 12px',
+              alignSelf: 'flex-start',
+              background: 'oklch(0.65 0.18 280 / 0.08)',
+              border: '1px solid oklch(0.65 0.18 280 / 0.20)',
+              borderRadius: 14,
             }}
           >
-            项目经理正在思考…
+            <span style={{ display: 'inline-flex', gap: 3 }}>
+              <Dot delay={0} />
+              <Dot delay={0.2} />
+              <Dot delay={0.4} />
+            </span>
+            <span
+              className="pc-mono"
+              style={{ fontSize: 11, color: 'oklch(0.55 0.20 250)' }}
+            >
+              项目经理正在思考
+            </span>
           </div>
         ) : null}
         {liveTools.length > 0 && !sending ? (
@@ -257,6 +338,176 @@ export const ProducerChat: FC = () => {
     </div>
   )
 }
+
+// Inline "我的 AI 团队交付了这个" mini-card. Pulled from
+// window.polycoder.iteration.get on mount; cached per iteration_id
+// so revisiting old conversations doesn't re-fetch.
+const DeliveryCard: FC<{ iterationId: string }> = ({ iterationId }) => {
+  const [summary, setSummary] = useState<{
+    traffic_light: 'green' | 'yellow' | 'red' | null
+    iteration_number: number
+    files_changed: string[]
+    total_cost_usd: number | null
+    duration_ms: number | null
+    user_prompt: string
+  } | null>(null)
+  const [sharing, setSharing] = useState<'idle' | 'pending' | 'done' | 'error'>(
+    'idle',
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    void window.polycoder.iteration
+      .get({ iteration_id: iterationId })
+      .then((r) => {
+        if (cancelled) return
+        if (!r.ok || !r.record) return
+        setSummary({
+          traffic_light: r.record.traffic_light,
+          iteration_number: r.record.iteration_number,
+          files_changed: r.record.files_changed,
+          total_cost_usd: r.record.total_cost_usd,
+          duration_ms: r.record.duration_ms,
+          user_prompt: r.record.user_prompt,
+        })
+      })
+      .catch(() => {
+        /* card just doesn't render */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [iterationId])
+
+  if (!summary) return null
+
+  const verdict = summary.traffic_light ?? 'yellow'
+  const verdictLabel =
+    verdict === 'green'
+      ? '团队一致通过'
+      : verdict === 'yellow'
+        ? '已交付，附说明'
+        : '团队建议复跑'
+  const verdictTint =
+    verdict === 'green'
+      ? 'var(--green-tint)'
+      : verdict === 'yellow'
+        ? 'var(--amber-tint)'
+        : 'var(--red-tint)'
+  const verdictBorder =
+    verdict === 'green'
+      ? 'oklch(from var(--green) l c h / 0.30)'
+      : verdict === 'yellow'
+        ? 'oklch(from var(--amber) l c h / 0.30)'
+        : 'oklch(from var(--red) l c h / 0.30)'
+  const cost =
+    summary.total_cost_usd !== null
+      ? `$${summary.total_cost_usd.toFixed(4)}`
+      : '—'
+  const duration =
+    summary.duration_ms !== null
+      ? `${Math.round(summary.duration_ms / 1000)}s`
+      : '—'
+
+  async function doShare(): Promise<void> {
+    setSharing('pending')
+    try {
+      const r = await window.polycoder.iteration.shareCard({
+        iteration_id: iterationId,
+      })
+      setSharing(r.ok ? 'done' : 'error')
+    } catch {
+      setSharing('error')
+    }
+  }
+
+  return (
+    <div
+      className="fade-up"
+      style={{
+        maxWidth: '88%',
+        padding: '12px 14px',
+        background: 'var(--surface)',
+        backgroundImage: `linear-gradient(135deg, ${verdictTint}, transparent 65%)`,
+        border: `1px solid ${verdictBorder}`,
+        borderRadius: '14px 14px 14px 4px',
+        boxShadow: 'var(--shadow-1)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <VerdictPlanet verdict={verdict} size={36} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            className="pc-mono"
+            style={{
+              fontSize: 10,
+              color: 'var(--ink-3)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              marginBottom: 2,
+            }}
+          >
+            第 {summary.iteration_number} 轮 · {verdictLabel}
+          </div>
+          <div
+            style={{
+              fontSize: 12.5,
+              color: 'var(--ink)',
+              lineHeight: 1.4,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {summary.user_prompt}
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          fontSize: 11,
+          color: 'var(--ink-3)',
+        }}
+      >
+        <span className="pc-mono">⏱ {duration}</span>
+        <span className="pc-mono">¥ {cost}</span>
+        <span className="pc-mono">{summary.files_changed.length} 个文件</span>
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button
+          className="pc-btn"
+          data-size="sm"
+          onClick={() => void doShare()}
+          disabled={sharing === 'pending' || sharing === 'done'}
+        >
+          {sharing === 'idle' && '生成分享卡'}
+          {sharing === 'pending' && '生成中…'}
+          {sharing === 'done' && '✓ 已生成'}
+          {sharing === 'error' && '生成失败'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+const Dot: FC<{ delay: number }> = ({ delay }) => (
+  <span
+    style={{
+      width: 6,
+      height: 6,
+      borderRadius: '50%',
+      background: 'oklch(0.55 0.20 250)',
+      display: 'inline-block',
+      animation: 'pc-bounce-dot 1.2s ease-in-out infinite',
+      animationDelay: `${delay}s`,
+    }}
+  />
+)
 
 function toolLabel(name: string): string {
   switch (name) {

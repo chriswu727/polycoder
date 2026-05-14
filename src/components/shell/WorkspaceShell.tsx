@@ -14,7 +14,7 @@ import { useIterationStore } from '@/stores/iteration.js'
 
 import { Sidebar } from './Sidebar.js'
 import { ProducerChat } from './ProducerChat.js'
-import { RolePipelineProgress } from '@/components/workspace/RolePipelineProgress.js'
+import { TeamMeetingRoom } from '@/components/workspace/TeamMeetingRoom.js'
 import { IterationResult } from '@/components/workspace/IterationResult.js'
 import { PreviewPane, type PreviewState } from '@/components/workspace/PreviewPane.js'
 import { CodeBrowser } from '@/components/workspace/CodeBrowser.js'
@@ -119,7 +119,7 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
                 }}
               >
                 {status === 'running' ? (
-                  <RolePipelineProgress
+                  <TeamMeetingRoom
                     onAbort={() => {
                       if (current) void abort(current.id)
                     }}
