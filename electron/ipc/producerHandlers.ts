@@ -22,6 +22,11 @@ import {
 import { PipelineEventBus } from '@core/orchestrator/events.js'
 import type { ProviderFactory } from '@core/orchestrator/runIteration.js'
 import type { RendererPipelineEvent } from './pipelineHandlers.js'
+import {
+  tryAcquireIterationSlot,
+  setIterationId,
+  releaseIterationSlot,
+} from './iterationRegistry.js'
 
 export type ProducerSendRequest = {
   workspace_id: string
@@ -113,11 +118,28 @@ export async function handleProducerSend(
     return { provider: buildProvider(s), model: a.model_id }
   }
 
-  // Wire pipeline events to forward to renderer
+  // Acquire the workspace's single-iteration slot for the whole
+  // Producer turn — its inner tools (run_full_pipeline /
+  // run_quick_edit) inherit the slot rather than each acquiring,
+  // since they run sequentially within the Producer agent loop.
+  const abortController = tryAcquireIterationSlot(req.workspace_id)
+  if (!abortController) {
+    return {
+      ok: false,
+      error: `An iteration is already running for workspace ${req.workspace_id}. Wait for it to finish before talking to the PM again.`,
+    }
+  }
+
+  // Wire pipeline events to forward to renderer. Each iter the
+  // Producer dispatches fires its own iteration_started → we update
+  // the slot's iteration_id so the Stop button can find it.
   const bus = new PipelineEventBus()
   let currentIterationId = ''
   bus.subscribe((evt) => {
-    if (evt.type === 'iteration_started') currentIterationId = evt.iteration_id
+    if (evt.type === 'iteration_started') {
+      currentIterationId = evt.iteration_id
+      setIterationId(req.workspace_id, currentIterationId)
+    }
     deps.forwardEvent({
       ...evt,
       workspace_id: req.workspace_id,
@@ -140,6 +162,7 @@ export async function handleProducerSend(
       priorMessages,
       newUserMessage: req.message,
       eventBus: bus,
+      abort_signal: abortController.signal,
     })
 
     // Persist the NEW messages (those past priorMessages length). The
@@ -164,6 +187,8 @@ export async function handleProducerSend(
       ok: false,
       error: e instanceof Error ? e.message : String(e),
     }
+  } finally {
+    releaseIterationSlot(req.workspace_id)
   }
 }
 

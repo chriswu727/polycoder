@@ -1,8 +1,8 @@
 // write_file tool — create a new file. Refuses to overwrite; use
 // edit_file for that. Per docs/specs/tools.md §4.2.
 
-import { writeFileSync, existsSync, mkdirSync, statSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { writeFileSync, existsSync, mkdirSync, statSync, realpathSync } from 'node:fs'
+import { dirname, isAbsolute, relative, resolve } from 'node:path'
 import { z } from 'zod'
 import { buildTool, ToolError } from './ToolDef.js'
 import { resolveInWorkspace, displayPath } from './workspaceBoundary.js'
@@ -70,9 +70,28 @@ export const writeFileTool = buildTool({
     }
 
     try {
-      mkdirSync(dirname(absPath), { recursive: true })
+      const parent = dirname(absPath)
+      mkdirSync(parent, { recursive: true })
+      // resolveInWorkspace skips symlink resolution when the target
+      // doesn't exist yet — typical for write_file. But the PARENT now
+      // exists (we just mkdir'd it). If a prior step planted a symlink
+      // pointing outside the workspace, mkdirSync would have followed
+      // it. Re-resolve the parent and confirm it still lives in root.
+      const rootAbs = resolve(ctx.workspace_root)
+      const realParent = realpathSync(parent)
+      const relParent = relative(rootAbs, realParent)
+      if (relParent.startsWith('..') || isAbsolute(relParent)) {
+        throw new ToolError(
+          'workspace_violation',
+          'write_file',
+          `Parent directory of ${display} resolves outside workspace via symlink.`,
+          false,
+          { workspace_root: rootAbs, real_parent: realParent },
+        )
+      }
       writeFileSync(absPath, input.content, { encoding: 'utf8' })
     } catch (e) {
+      if (e instanceof ToolError) throw e
       throw new ToolError(
         'external_failure',
         'write_file',

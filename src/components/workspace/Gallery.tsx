@@ -258,9 +258,9 @@ const GalleryCard: FC<{
           color: 'var(--ink-3)',
         }}
       >
-        <span className="pc-mono">⏱ {durationLabel(iter.duration_ms)}</span>
+        <span className="pc-mono">耗时 {durationLabel(iter.duration_ms)}</span>
         <span className="pc-mono">
-          ¥ {iter.total_cost_usd !== null
+          花费 {iter.total_cost_usd !== null
             ? formatCost(iter.total_cost_usd, costFormat)
             : '—'}
         </span>

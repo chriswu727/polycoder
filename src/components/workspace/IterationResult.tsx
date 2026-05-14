@@ -31,20 +31,20 @@ import {
 import type { RoleType } from '@core/types/role.js'
 
 const VERDICT_LABEL: Record<Verdict, string> = {
-  green: 'Looks good',
-  yellow: 'Built, with notes',
-  red: 'Needs your input',
+  green: '团队一致通过',
+  yellow: '已交付，附说明',
+  red: '团队建议复跑',
 }
 
 const FRIENDLY_ROLE: Record<string, string> = {
-  translator: 'Understanding your idea',
-  designer: 'Sketching the layout',
-  architect: 'Planning the structure',
-  coder: 'Writing your app',
-  adversary: 'Double-checking',
-  long_term_critic: 'Reviewing',
-  test_runner: 'Testing',
-  communicator: 'Wrapping up',
+  translator: '正在听懂你的需求',
+  designer: '正在勾画布局',
+  architect: '正在规划结构',
+  coder: '正在写代码',
+  adversary: '正在挑刺验证',
+  long_term_critic: '正在长期审视',
+  test_runner: '正在跑测试',
+  communicator: '正在收尾',
 }
 
 type FailureCode =
@@ -63,44 +63,42 @@ type FailureContent = {
 
 const FAILURE_MESSAGES: Record<FailureCode, FailureContent> = {
   envelope_parse_exhausted: {
-    title: "We couldn't make sense of one model's reply.",
-    body:
-      "The model returned something we couldn't parse — even after a few retries. " +
-      'This is almost always a model issue, not your prompt.',
+    title: '某位 AI 角色的回复我们看不懂。',
+    body: '模型连着几次都给出我们解析不了的内容。这基本是模型本身的问题，不是你的描述有问题。',
     suggestions: [
-      'Try the same prompt again.',
-      'Switch this role to a different model in Settings → Team.',
+      '原样再发一次试试。',
+      '在「设置 → 团队」里给这个角色换一个模型。',
     ],
   },
   payload_validation_exhausted: {
-    title: "A model kept producing a response that didn't match what we needed.",
-    body: 'The response failed validation a few times in a row. We stopped before burning more credits.',
+    title: '某位 AI 角色一直给不出合格的回复。',
+    body: '回复连着几次都没通过校验。为了不继续烧 API 额度，我们停了下来。',
     suggestions: [
-      'Retry — this often clears on the next run.',
-      'If it keeps happening, switch the role to a stronger model.',
+      '重试一次——这种情况通常下一次就好了。',
+      '反复出现就给那个角色换一个更强的模型。',
     ],
   },
   tool_loop_budget_exceeded: {
-    title: 'One step looped longer than we allow.',
-    body: "The role kept calling tools without finishing. We cut it off so the run didn't balloon.",
-    suggestions: ['Retry — model will start fresh.', 'Try a smaller change in your next prompt.'],
+    title: '某个步骤反复调用工具，超出了允许次数。',
+    body: '角色一直调工具但没收尾。为防止开销失控，我们把它中断了。',
+    suggestions: ['重试——模型会重新开始。', '下一轮提示词改小一点的改动试试。'],
   },
   provider_error: {
-    title: 'A provider returned an error.',
-    body: "The provider returned an error and didn't recover. This is on their side.",
-    suggestions: ["Retry in a minute.", "Check the provider's status page if it persists."],
+    title: '模型供应商返回了错误。',
+    body: '供应商返回错误且没自动恢复。这是他们那边的问题。',
+    suggestions: ['一分钟后重试。', '一直失败的话去看一眼供应商的状态页。'],
   },
   aborted: {
-    title: 'You stopped this run.',
-    body: 'No partial files were saved. Your previous iteration is unchanged.',
-    suggestions: ["Send a new prompt when you're ready."],
+    title: '你中止了这一轮。',
+    body: '没有写入任何半成品文件，上一轮成果原样保留。',
+    suggestions: ['想好后再发一条新指令。'],
   },
   role_max_attempts_exceeded: {
-    title: "A step couldn't finish after several tries.",
-    body: 'It produced no usable output after the maximum number of attempts.',
+    title: '某个角色尝试多次后仍没拿出可用结果。',
+    body: '已经达到最大尝试次数，依然没有可用的输出。',
     suggestions: [
-      'Try rephrasing the prompt slightly — sometimes a clearer ask helps.',
-      'Or switch the role to a different model in Settings → Team.',
+      '把提示词稍微改写一下试试——说得更清楚一些往往有帮助。',
+      '或者在「设置 → 团队」里给这个角色换一个模型。',
     ],
   },
 }

@@ -162,7 +162,7 @@ export const WebContainerHost: FC = () => {
         containerRef.current = null
       }
     }
-  }, [current?.id, current])
+  }, [current])
 
   if (!current) return null
 

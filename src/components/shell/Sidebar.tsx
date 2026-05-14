@@ -223,10 +223,10 @@ export const Sidebar: FC<{
                 textOverflow: 'ellipsis',
               }}
             >
-              {current ? current.name : 'No project selected'}
+              {current ? current.name : '未选项目'}
             </div>
             <div className="pc-mono" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
-              {current ? `${iters.length} iteration${iters.length === 1 ? '' : 's'}` : 'create one →'}
+              {current ? `${iters.length} 轮` : '新建一个 →'}
             </div>
           </div>
           <IconChevronDown size={12} />
@@ -286,7 +286,7 @@ export const Sidebar: FC<{
                 onCreateWorkspace()
               }}
             >
-              <IconPlus size={12} /> New project
+              <IconPlus size={12} /> 新建项目
             </button>
             {current && editing === 'idle' ? (
               <>
@@ -339,15 +339,15 @@ export const Sidebar: FC<{
                       }
                     }}
                     style={{ flex: 1, minWidth: 0 }}
-                    placeholder="Project name"
-                    aria-label="Project name"
+                    placeholder="项目名"
+                    aria-label="项目名"
                   />
                   <button
                     className="pc-btn"
                     data-size="sm"
                     onClick={() => void commitRename()}
-                    aria-label="Save rename"
-                    title="Save (Enter)"
+                    aria-label="保存重命名"
+                    title="保存（Enter）"
                   >
                     <IconCheck size={11} />
                   </button>
@@ -356,8 +356,8 @@ export const Sidebar: FC<{
                     data-variant="ghost"
                     data-size="sm"
                     onClick={resetEdit}
-                    aria-label="Cancel rename"
-                    title="Cancel (Esc)"
+                    aria-label="取消重命名"
+                    title="取消（Esc）"
                   >
                     <IconX size={11} />
                   </button>
@@ -402,7 +402,7 @@ export const Sidebar: FC<{
                       borderColor: 'var(--red)',
                     }}
                   >
-                    <IconTrash size={11} /> Delete
+                    <IconTrash size={11} /> 删除
                   </button>
                   <button
                     className="pc-btn"
@@ -411,7 +411,7 @@ export const Sidebar: FC<{
                     onClick={resetEdit}
                     style={{ justifyContent: 'center' }}
                   >
-                    Cancel
+                    取消
                   </button>
                 </div>
               </div>
@@ -427,13 +427,13 @@ export const Sidebar: FC<{
           className="pc-btn"
           style={{ width: '100%', justifyContent: 'center' }}
         >
-          <IconPlus size={12} /> New prompt
+          <IconPlus size={12} /> 新一轮
         </button>
       </div>
 
       {/* History */}
       <div style={{ padding: '4px 14px 6px' }}>
-        <div className="pc-eyebrow">Iterations</div>
+        <div className="pc-eyebrow">历史</div>
       </div>
       <div className="scroll" style={{ flex: 1, overflowY: 'auto', padding: '0 6px 8px' }}>
         {iters.length === 0 ? (
@@ -446,7 +446,7 @@ export const Sidebar: FC<{
               lineHeight: 1.45,
             }}
           >
-            No iterations yet. Click <strong>New prompt</strong> above to start.
+            还没有记录。点上方的<strong>新一轮</strong>开始。
           </div>
         ) : (
           iters.map((h) => {
@@ -547,15 +547,15 @@ export const Sidebar: FC<{
           data-size="sm"
           style={{ flex: 1, justifyContent: 'flex-start' }}
         >
-          <IconSettings size={12} /> Settings
+          <IconSettings size={12} /> 设置
         </button>
         <button
           onClick={toggleTheme}
           className="pc-btn"
           data-variant="ghost"
           data-size="sm"
-          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-label={theme === 'dark' ? '切换到浅色' : '切换到深色'}
+          title={theme === 'dark' ? '切换到浅色' : '切换到深色'}
           style={{ flex: '0 0 auto', padding: '4px 8px' }}
         >
           {theme === 'dark' ? <IconSun size={13} /> : <IconMoon size={13} />}

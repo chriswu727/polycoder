@@ -33,6 +33,10 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
     const status = useIterationStore((s) => s.status)
     const result = useIterationStore((s) => s.result)
     const iterationNumber = useIterationStore((s) => s.iteration_number)
+    // Subscribe to iteration_id so PreviewPane's reloadKey actually
+    // changes on iteration completion (previous code read it via
+    // getState() which never re-rendered).
+    const iterationId = useIterationStore((s) => s.iteration_id)
     const abort = useIterationStore((s) => s.abort)
     const reset = useIterationStore((s) => s.reset)
     const bootstrap = useIterationStore((s) => s.bootstrap)
@@ -55,7 +59,6 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
     // claiming half the screen is wasteful.
     const hasIterationActivity = status !== 'idle' || !!result
 
-    const iterationId = useIterationStore.getState().iteration_id
     const previewState: PreviewState =
       status === 'running'
         ? { kind: 'building' }
@@ -157,6 +160,8 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
                         key={t}
                         role="tab"
                         aria-selected={rightTab === t}
+                        aria-controls={`right-pane-panel-${t}`}
+                        id={`right-pane-tab-${t}`}
                         onClick={() => setRightTab(t)}
                         className="pc-mono"
                         style={{
@@ -188,7 +193,12 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
                     ),
                   )}
                 </div>
-                <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                <div
+                  style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}
+                  role="tabpanel"
+                  id={`right-pane-panel-${rightTab}`}
+                  aria-labelledby={`right-pane-tab-${rightTab}`}
+                >
                   {rightTab === 'gallery' ? (
                     <Gallery
                       onSelectIteration={(id) => {

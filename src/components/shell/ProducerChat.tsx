@@ -7,7 +7,19 @@ import type { FC } from 'react'
 
 import { useProducerStore } from '@/stores/producer.js'
 import { useWorkspaceStore } from '@/stores/workspace.js'
+import { formatCost, usePreferencesStore } from '@/stores/preferences.js'
 import { IconArrowUp, VerdictPlanet } from '@/components/icons.js'
+
+type DeliverySummary = {
+  traffic_light: 'green' | 'yellow' | 'red' | null
+  iteration_number: number
+  files_changed: string[]
+  total_cost_usd: number | null
+  duration_ms: number | null
+  user_prompt: string
+}
+
+const deliveryCardCache = new Map<string, DeliverySummary>()
 
 const PRODUCER_GREETING =
   '你好。我是这个项目的项目经理（PM），帮你协调一支 8 人的 AI 团队。\n\n告诉我你想做什么——可以模糊（"做个能记账的"），也可以具体（"改一下这里的颜色"）。我先问几个澄清的事，然后让团队上手。'
@@ -21,6 +33,7 @@ export const ProducerChat: FC = () => {
   const totalCost = useProducerStore((s) => s.totalCostUsd)
   const loadHistory = useProducerStore((s) => s.loadHistory)
   const sendMessage = useProducerStore((s) => s.sendMessage)
+  const costFormat = usePreferencesStore((s) => s.costFormat)
 
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -144,7 +157,7 @@ export const ProducerChat: FC = () => {
               marginTop: 1,
             }}
           >
-            ${totalCost.toFixed(4)}
+            {formatCost(totalCost, costFormat)}
           </div>
           <div
             className="pc-mono"
@@ -355,33 +368,36 @@ export const ProducerChat: FC = () => {
 // window.polycoder.iteration.get on mount; cached per iteration_id
 // so revisiting old conversations doesn't re-fetch.
 const DeliveryCard: FC<{ iterationId: string }> = ({ iterationId }) => {
-  const [summary, setSummary] = useState<{
-    traffic_light: 'green' | 'yellow' | 'red' | null
-    iteration_number: number
-    files_changed: string[]
-    total_cost_usd: number | null
-    duration_ms: number | null
-    user_prompt: string
-  } | null>(null)
+  const [summary, setSummary] = useState<DeliverySummary | null>(
+    () => deliveryCardCache.get(iterationId) ?? null,
+  )
   const [sharing, setSharing] = useState<'idle' | 'pending' | 'done' | 'error'>(
     'idle',
   )
+  const costFormat = usePreferencesStore((s) => s.costFormat)
 
   useEffect(() => {
+    const cached = deliveryCardCache.get(iterationId)
+    if (cached) {
+      setSummary(cached)
+      return
+    }
     let cancelled = false
     void window.polycoder.iteration
       .get({ iteration_id: iterationId })
       .then((r) => {
         if (cancelled) return
         if (!r.ok || !r.record) return
-        setSummary({
+        const next: DeliverySummary = {
           traffic_light: r.record.traffic_light,
           iteration_number: r.record.iteration_number,
           files_changed: r.record.files_changed,
           total_cost_usd: r.record.total_cost_usd,
           duration_ms: r.record.duration_ms,
           user_prompt: r.record.user_prompt,
-        })
+        }
+        deliveryCardCache.set(iterationId, next)
+        setSummary(next)
       })
       .catch(() => {
         /* card just doesn't render */
@@ -414,7 +430,7 @@ const DeliveryCard: FC<{ iterationId: string }> = ({ iterationId }) => {
         : 'oklch(from var(--red) l c h / 0.30)'
   const cost =
     summary.total_cost_usd !== null
-      ? `$${summary.total_cost_usd.toFixed(4)}`
+      ? formatCost(summary.total_cost_usd, costFormat)
       : '—'
   const duration =
     summary.duration_ms !== null
@@ -486,8 +502,8 @@ const DeliveryCard: FC<{ iterationId: string }> = ({ iterationId }) => {
           color: 'var(--ink-3)',
         }}
       >
-        <span className="pc-mono">⏱ {duration}</span>
-        <span className="pc-mono">¥ {cost}</span>
+        <span className="pc-mono">耗时 {duration}</span>
+        <span className="pc-mono">花费 {cost}</span>
         <span className="pc-mono">{summary.files_changed.length} 个文件</span>
       </div>
       <div style={{ display: 'flex', gap: 6 }}>

@@ -22,15 +22,12 @@ import {
 import type { PipelineEvent, PipelineResult } from '@core/types/iteration.js'
 import type { RoleType } from '@core/types/role.js'
 
-// ─── Active-iteration registry ──────────────────────────────────────
-
-type ActiveIteration = {
-  workspace_id: string
-  iteration_id: string
-  abortController: AbortController
-}
-
-const activeIterations = new Map<string, ActiveIteration>()
+import {
+  tryAcquireIterationSlot,
+  setIterationId,
+  releaseIterationSlot,
+  abortIteration,
+} from './iterationRegistry.js'
 
 // ─── Request / response shapes ──────────────────────────────────────
 
@@ -91,8 +88,10 @@ export async function handleStartIteration(
   deps: PipelineHandlerDeps,
   req: StartIterationRequest,
 ): Promise<StartIterationResponse> {
-  // Single concurrent iteration per workspace.
-  if (activeIterations.has(req.workspace_id)) {
+  // Acquire the workspace's single-iteration slot. Rejects if any
+  // other pipeline (direct or Producer-dispatched) holds it.
+  const abortController = tryAcquireIterationSlot(req.workspace_id)
+  if (!abortController) {
     return {
       ok: false,
       error: `An iteration is already running for workspace ${req.workspace_id}.`,
@@ -101,10 +100,9 @@ export async function handleStartIteration(
 
   const hydrated = getHydratedWorkspace(deps.db, req.workspace_id)
   if (!hydrated) {
+    releaseIterationSlot(req.workspace_id)
     return { ok: false, error: `Workspace not found: ${req.workspace_id}` }
   }
-
-  const abortController = new AbortController()
 
   // Build the provider factory once per iteration. It looks up
   // the role assignment + secret + keystore and constructs a
@@ -174,7 +172,7 @@ export async function handleStartIteration(
       // eslint-disable-next-line no-console
       console.error('runIteration threw:', e)
     } finally {
-      activeIterations.delete(req.workspace_id)
+      releaseIterationSlot(req.workspace_id)
     }
   })()
 
@@ -185,14 +183,11 @@ export async function handleStartIteration(
 
   const iter = getActiveOrLatest(deps.db, req.workspace_id, iterationId)
   if (!iter) {
+    releaseIterationSlot(req.workspace_id)
     return { ok: false, error: 'Iteration failed to register.' }
   }
 
-  activeIterations.set(req.workspace_id, {
-    workspace_id: req.workspace_id,
-    iteration_id: iter.id,
-    abortController,
-  })
+  setIterationId(req.workspace_id, iter.id)
 
   return {
     ok: true,
@@ -218,7 +213,8 @@ export async function handleQuickEdit(
   deps: PipelineHandlerDeps,
   req: QuickEditRequest,
 ): Promise<QuickEditResponse> {
-  if (activeIterations.has(req.workspace_id)) {
+  const abortController = tryAcquireIterationSlot(req.workspace_id)
+  if (!abortController) {
     return {
       ok: false,
       error: `An iteration is already running for workspace ${req.workspace_id}.`,
@@ -227,6 +223,7 @@ export async function handleQuickEdit(
 
   const hydrated = getHydratedWorkspace(deps.db, req.workspace_id)
   if (!hydrated) {
+    releaseIterationSlot(req.workspace_id)
     return { ok: false, error: `Workspace not found: ${req.workspace_id}` }
   }
 
@@ -235,6 +232,7 @@ export async function handleQuickEdit(
   // friendly error so the renderer can route to Settings.
   const coderAssignment = hydrated.role_assignments.coder
   if (!coderAssignment.secret_id || !coderAssignment.model_id) {
+    releaseIterationSlot(req.workspace_id)
     return {
       ok: false,
       error:
@@ -248,6 +246,7 @@ export async function handleQuickEdit(
     coderAssignment.secret_id,
   )
   if (!hydratedSecret) {
+    releaseIterationSlot(req.workspace_id)
     return {
       ok: false,
       error:
@@ -256,7 +255,6 @@ export async function handleQuickEdit(
   }
   const provider = buildProvider(hydratedSecret)
 
-  const abortController = new AbortController()
   const bus = new PipelineEventBus()
   let iterationId = ''
   bus.subscribe((evt) => {
@@ -291,7 +289,7 @@ export async function handleQuickEdit(
       // eslint-disable-next-line no-console
       console.error('runQuickEdit threw:', e)
     } finally {
-      activeIterations.delete(req.workspace_id)
+      releaseIterationSlot(req.workspace_id)
     }
   })()
 
@@ -300,14 +298,11 @@ export async function handleQuickEdit(
 
   const iter = getActiveOrLatest(deps.db, req.workspace_id, iterationId)
   if (!iter) {
+    releaseIterationSlot(req.workspace_id)
     return { ok: false, error: 'Quick Edit failed to register.' }
   }
 
-  activeIterations.set(req.workspace_id, {
-    workspace_id: req.workspace_id,
-    iteration_id: iter.id,
-    abortController,
-  })
+  setIterationId(req.workspace_id, iter.id)
 
   return {
     ok: true,
@@ -320,10 +315,8 @@ export function handleAbortIteration(
   _deps: PipelineHandlerDeps,
   req: AbortIterationRequest,
 ): AbortIterationResponse {
-  const active = activeIterations.get(req.workspace_id)
-  if (!active) return { ok: true, aborted: false }
-  active.abortController.abort('user_aborted')
-  return { ok: true, aborted: true }
+  const aborted = abortIteration(req.workspace_id)
+  return { ok: true, aborted }
 }
 
 export function handleListIterations(

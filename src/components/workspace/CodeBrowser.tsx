@@ -123,7 +123,7 @@ export const CodeBrowser: FC = () => {
           textAlign: 'center',
         }}
       >
-        Pick a project to browse its files.
+        选一个项目，就能查看它的文件。
       </div>
     )
   }
@@ -156,15 +156,15 @@ export const CodeBrowser: FC = () => {
           }}
         >
           <div className="pc-eyebrow" style={{ flex: 1 }}>
-            Files · {files.length}
+            文件 · {files.length}
           </div>
           <button
             className="pc-btn"
             data-variant="ghost"
             data-size="sm"
             onClick={() => void refresh()}
-            title="Reload file list"
-            aria-label="Reload file list"
+            title="刷新文件列表"
+            aria-label="刷新文件列表"
             disabled={loading}
             style={{ padding: '2px 6px' }}
           >
@@ -185,8 +185,7 @@ export const CodeBrowser: FC = () => {
                 lineHeight: 1.4,
               }}
             >
-              No files in workspace yet. Send a prompt — files appear once Coder
-              writes them.
+              工作区暂无文件。先告诉项目经理你想做什么——写码工程师写完，这里就会出现。
             </div>
           ) : null}
           {files.map((f) => {
@@ -270,7 +269,7 @@ export const CodeBrowser: FC = () => {
               whiteSpace: 'nowrap',
             }}
           >
-            {selected ?? '(no file selected)'}
+            {selected ?? '（未选中文件）'}
           </span>
           {content?.ok ? (
             <span
@@ -278,7 +277,7 @@ export const CodeBrowser: FC = () => {
               style={{ fontSize: 10.5, color: 'var(--ink-3)' }}
             >
               {humanSize(content.size)} · {content.language}
-              {content.truncated ? ' · truncated' : ''}
+              {content.truncated ? ' · 已截断' : ''}
             </span>
           ) : null}
         </div>
@@ -295,7 +294,7 @@ export const CodeBrowser: FC = () => {
                 textAlign: 'center',
               }}
             >
-              Pick a file on the left.
+              在左侧选一个文件。
             </div>
           ) : content === null ? (
             <div
@@ -306,7 +305,7 @@ export const CodeBrowser: FC = () => {
                 fontStyle: 'italic',
               }}
             >
-              loading…
+              加载中…
             </div>
           ) : content.ok ? (
             <CodeMirrorView content={content.content} language={content.language} />
@@ -318,7 +317,7 @@ export const CodeBrowser: FC = () => {
                 fontSize: 12,
               }}
             >
-              Could not read file: {content.error}
+              读取文件失败：{content.error}
             </div>
           )}
         </div>
@@ -358,6 +357,11 @@ const CodeMirrorView: FC<{ content: string; language: string }> = ({
   const hostRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
 
+  // The view is created (and destroyed) only when the language
+  // changes — recreating an EditorView on every keystroke / file
+  // switch was both expensive and reset scroll position. Doc
+  // updates go through view.dispatch() so the editor's internal
+  // state survives unchanged extensions.
   useEffect(() => {
     if (!hostRef.current) return
     const state = EditorState.create({
@@ -378,7 +382,18 @@ const CodeMirrorView: FC<{ content: string; language: string }> = ({
       view.destroy()
       viewRef.current = null
     }
-  }, [content, language])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    const current = view.state.doc.toString()
+    if (current === content) return
+    view.dispatch({
+      changes: { from: 0, to: current.length, insert: content },
+    })
+  }, [content])
 
   return (
     <div

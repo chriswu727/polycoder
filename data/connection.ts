@@ -22,7 +22,26 @@ export function openDatabase(dbPath: string): Database.Database {
   const db = new Database(dbPath)
   configureDatabase(db)
   runMigrations(db)
+  recoverOrphanedIterations(db)
   return db
+}
+
+/**
+ * Crash-recovery sweep. Any iteration left in 'running' status from a
+ * prior process (Electron crash, kill -9, OS shutdown) is now stranded —
+ * the AbortController and event bus that drove it are gone. Mark them
+ * aborted so the UI doesn't show a perpetual spinner on app restart.
+ */
+function recoverOrphanedIterations(db: Database.Database): void {
+  const now = Date.now()
+  db.prepare(
+    `UPDATE iterations
+       SET status = 'aborted',
+           traffic_light = COALESCE(traffic_light, 'red'),
+           ended_at = COALESCE(ended_at, ?),
+           duration_ms = COALESCE(duration_ms, ? - started_at)
+     WHERE status = 'running'`,
+  ).run(now, now)
 }
 
 export function configureDatabase(db: Database.Database): void {

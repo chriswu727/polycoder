@@ -35,6 +35,31 @@ const MAX_DEPTH = 5
 const MAX_ENTRIES = 500
 const MAX_FILE_BYTES = 200 * 1024
 
+/**
+ * Filenames matching these patterns are NEVER served via
+ * listWorkspaceFiles or readWorkspaceFile. Defense in depth against
+ * a prompt-injected Coder writing secrets into a workspace file and
+ * the renderer (or a compromised iframe) reading them back.
+ *
+ * The Code tab + Producer's read_workspace_file tool both go
+ * through these checks.
+ */
+const DENY_PATTERNS: RegExp[] = [
+  /^\.env(\.|$)/i, // .env, .env.local, .env.production, etc.
+  /\.env(\..*)?$/i, // any .env variant
+  /\.(pem|key|p12|pfx|cer|crt)$/i, // crypto material
+  /(^|\/)id_(rsa|dsa|ecdsa|ed25519)(\.pub)?$/i, // SSH keys
+  /(^|\/)\.npmrc$/i, // can contain auth tokens
+  /(^|\/)\.netrc$/i, // can contain HTTP creds
+  /(^|\/)\.aws\//i, // AWS profile dir
+  /(^|\/)credentials(\.json|\.txt)?$/i, // generic creds
+  /\.cookies?$/i,
+]
+
+function isSensitivePath(displayPath: string): boolean {
+  return DENY_PATTERNS.some((re) => re.test(displayPath))
+}
+
 export type WorkspaceFileEntry = {
   path: string // relative, forward-slash separated
   size: number
@@ -69,6 +94,7 @@ export function listWorkspaceFiles(root: string): WorkspaceFileEntry[] {
       }
       if (!stat.isFile()) continue
       const rel = relative(absRoot, full).split('\\').join('/')
+      if (isSensitivePath(rel)) continue
       out.push({
         path: rel,
         size: stat.size,
@@ -96,6 +122,10 @@ export function readWorkspaceFile(
   const rel = relative(absRoot, abs)
   if (rel.startsWith('..') || isAbsolute(rel)) {
     return { ok: false, error: 'path resolves outside workspace' }
+  }
+  const relForward = rel.split('\\').join('/')
+  if (isSensitivePath(relForward)) {
+    return { ok: false, error: 'file is on the deny list (secret-like name)' }
   }
   let stat
   try {

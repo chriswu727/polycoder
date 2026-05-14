@@ -58,6 +58,8 @@ export const useProducerStore = create<ProducerStore>((set, get) => ({
       messages: [],
       liveToolInvocations: [],
       error: null,
+      sending: false,
+      totalCostUsd: 0,
     })
     try {
       const res = await window.polycoder.producer.history({ workspace_id })

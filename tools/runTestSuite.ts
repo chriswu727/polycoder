@@ -49,12 +49,19 @@ export const runTestSuiteTool = buildTool({
       input.framework_override ?? detectFramework(ctx.workspace_root)
     const baseCmd = FRAMEWORK_COMMANDS[framework] ?? 'pnpm test'
 
-    let command = baseCmd
-    if (input.scope === 'specific' && input.specific_files && input.specific_files.length > 0) {
-      command = `${baseCmd} ${input.specific_files.join(' ')}`
+    // baseCmd is a string like "pnpm test" — split into argv. Specific
+    // files (if any) are appended as separate argv tokens.
+    const argv = baseCmd.split(/\s+/).filter(Boolean)
+    if (
+      input.scope === 'specific' &&
+      input.specific_files &&
+      input.specific_files.length > 0
+    ) {
+      argv.push(...input.specific_files)
     }
+    const command = argv.join(' ')
 
-    const result = await runShellCommand(command, {
+    const result = await runShellCommand(argv, {
       cwd: ctx.workspace_root,
       timeout_ms: 180_000,
       abort_signal: ctx.abort_signal,
