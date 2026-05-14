@@ -19,6 +19,7 @@ import { IterationResult } from '@/components/workspace/IterationResult.js'
 import { PreviewPane, type PreviewState } from '@/components/workspace/PreviewPane.js'
 import { CodeBrowser } from '@/components/workspace/CodeBrowser.js'
 import { WebContainerHost } from '@/components/workspace/WebContainerHost.js'
+import { Gallery } from '@/components/workspace/Gallery.js'
 
 // The old IdleChat hero + ChatBody / CompletedTeamBubble /
 // detectPresetLabel rendered the pre-Producer chat flow.
@@ -36,9 +37,9 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
     const reset = useIterationStore((s) => s.reset)
     const bootstrap = useIterationStore((s) => s.bootstrap)
     const [activeIter, setActiveIter] = useState<string | null>(null)
-    const [rightTab, setRightTab] = useState<'preview' | 'code' | 'sandbox'>(
-      'preview',
-    )
+    const [rightTab, setRightTab] = useState<
+      'preview' | 'code' | 'sandbox' | 'gallery'
+    >('preview')
 
     useEffect(() => {
       const off = bootstrap(() => useWorkspaceStore.getState().current?.id ?? null)
@@ -150,39 +151,52 @@ export const WorkspaceShell: FC<{ onOpenSettings: () => void; onCreateWorkspace:
                   role="tablist"
                   aria-label="Right pane mode"
                 >
-                  {(['preview', 'code', 'sandbox'] as const).map((t) => (
-                    <button
-                      key={t}
-                      role="tab"
-                      aria-selected={rightTab === t}
-                      onClick={() => setRightTab(t)}
-                      className="pc-mono"
-                      style={{
-                        padding: '3px 10px',
-                        borderRadius: 6,
-                        fontSize: 11,
-                        fontWeight: 500,
-                        border: '1px solid',
-                        borderColor:
-                          rightTab === t ? 'var(--border)' : 'transparent',
-                        cursor: 'pointer',
-                        background:
-                          rightTab === t ? 'var(--surface)' : 'transparent',
-                        color: rightTab === t ? 'var(--ink)' : 'var(--ink-3)',
-                        boxShadow: rightTab === t ? 'var(--shadow-1)' : 'none',
-                        textTransform: 'capitalize',
-                      }}
-                    >
-                      {t === 'preview'
-                        ? 'Preview'
-                        : t === 'code'
-                          ? 'Code'
-                          : 'Sandbox'}
-                    </button>
-                  ))}
+                  {(['preview', 'code', 'sandbox', 'gallery'] as const).map(
+                    (t) => (
+                      <button
+                        key={t}
+                        role="tab"
+                        aria-selected={rightTab === t}
+                        onClick={() => setRightTab(t)}
+                        className="pc-mono"
+                        style={{
+                          padding: '3px 10px',
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 500,
+                          border: '1px solid',
+                          borderColor:
+                            rightTab === t ? 'var(--border)' : 'transparent',
+                          cursor: 'pointer',
+                          background:
+                            rightTab === t ? 'var(--surface)' : 'transparent',
+                          color:
+                            rightTab === t ? 'var(--ink)' : 'var(--ink-3)',
+                          boxShadow:
+                            rightTab === t ? 'var(--shadow-1)' : 'none',
+                          textTransform: 'capitalize',
+                        }}
+                      >
+                        {t === 'preview'
+                          ? '预览'
+                          : t === 'code'
+                            ? '代码'
+                            : t === 'sandbox'
+                              ? '沙盒'
+                              : '作品集'}
+                      </button>
+                    ),
+                  )}
                 </div>
                 <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                  {rightTab === 'sandbox' ? (
+                  {rightTab === 'gallery' ? (
+                    <Gallery
+                      onSelectIteration={(id) => {
+                        setActiveIter(id)
+                        void useIterationStore.getState().loadPast(id)
+                      }}
+                    />
+                  ) : rightTab === 'sandbox' ? (
                     <WebContainerHost />
                   ) : rightTab === 'preview' ? (
                     <PreviewPane state={previewState} />

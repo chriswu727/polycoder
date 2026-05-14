@@ -58,6 +58,11 @@ function serveFile(filePath: string, res: import('node:http').ServerResponse): v
       // or http://localhost:5173). Restrictive enough — this server
       // only ever holds the user's own workspace files.
       'access-control-allow-origin': '*',
+      // Renderer runs Cross-Origin-Embedder-Policy: require-corp so
+      // the Sandbox/WebContainer tab can use SharedArrayBuffer.
+      // Iframes of THIS preview server need an explicit CORP header
+      // or COEP blocks the iframe.
+      'cross-origin-resource-policy': 'cross-origin',
       // Don't let stale assets stick around between iterations.
       'cache-control': 'no-store',
     })

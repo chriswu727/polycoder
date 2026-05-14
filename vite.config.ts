@@ -14,6 +14,19 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Cross-origin isolation headers required for WebContainer in
+    // the Sandbox tab (SharedArrayBuffer needs both). Inert for the
+    // rest of the renderer, safe to enable unconditionally in dev.
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
+  },
+  preview: {
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
   },
   resolve: {
     alias: {
