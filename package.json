@@ -27,6 +27,7 @@
     "test:node-rebuild": "pnpm rebuild better-sqlite3 keytar",
     "electron:build": "pnpm build:electron && pnpm build:renderer",
     "smoke": "tsx --env-file-if-exists=.env.local scripts/smoke.ts",
+    "producer-smoke": "tsx --env-file-if-exists=.env.local scripts/producer-smoke.ts",
     "ist-run": "tsx --env-file-if-exists=.env.local scripts/ist-run.ts",
     "ist-metrics": "tsx --env-file-if-exists=.env.local scripts/ist-metrics.ts",
     "ist-aggregate": "tsx --env-file-if-exists=.env.local scripts/ist-aggregate.ts",

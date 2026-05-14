@@ -31,7 +31,9 @@ export const MAX_TOOL_CALLS_PER_ROLE = 40
  * GLM-4-plus burned 487K input tokens / $3.42 across 40 tool calls.
  */
 const TOOL_CALLS_BY_ROLE: Partial<Record<RoleType, number>> = {
-  adversary: 12,
+  // Adversary 12 was tight (producer-smoke 2 hit 13/12). Same fix
+  // as the LTC bump — 18 is still well under the V0 40 ceiling.
+  adversary: 18,
   // 12 was too tight in practice — Round 2 smoke 7 LTC hit 13/12
   // analyzing a 300-LOC index.html (read_file + read_project_memory
   // + a few re-reads). 18 still beats the V0 default of 40 by a

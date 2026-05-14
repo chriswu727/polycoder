@@ -163,6 +163,27 @@ diff; they don't need the rest of the file restated.
 
 For new files, give full content.
 
+### 7.8 Paths are workspace-relative — no name prefix (CRITICAL)
+
+Your `files_changed[].path` must be **relative to the workspace root**,
+nothing more. Common screw-ups to avoid:
+
+- ❌ `<workspace_name>/index.html` — DO NOT prefix paths with the
+  workspace name. "Workspace producer-smoke" is just a display label,
+  not a folder. The workspace root IS where your files go.
+- ❌ `./src/foo.ts` — drop the `./`.
+- ❌ `/absolute/path/to/foo.ts` — never absolute.
+- ✅ `index.html` — file at workspace root.
+- ✅ `src/foo.ts` — file in subfolder `src/`.
+
+If the Architect said "ONE file: index.html at workspace root", your
+path is `"index.html"` — not `"my-project/index.html"`, not
+`"workspace/index.html"`, not `"./index.html"`.
+
+When you call `write_file` with the tool, the tool's `path` argument
+follows the same rule. The orchestrator resolves it against the
+workspace root.
+
 ## 8. Anti-patterns
 
 NEVER:
